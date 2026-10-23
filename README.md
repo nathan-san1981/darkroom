@@ -10,7 +10,7 @@ Tap **Fun** in the header for a guided cut-and-paste flow:
 
 1. **Cut:** pick a photo, paint over the part you want (brush, eraser or lasso), tap Done.
 2. **Place:** pick the photo to paste onto, or paste onto the same one. Saved cutouts stay in a tray.
-3. **Adjust:** drag to move; drag the ↻ handle to spin around the center; drag the ⤡ corner or pinch to resize. Sliders for size, rotation, see-through (to check placement), and brightness to match the new photo. Flip, outline, shadow, nudge arrows, duplicate, send back, change background, save.
+3. **Adjust:** drag to move; drag the blue corner knob around to spin it about its center, or in and out to resize (pinch works too). Sliders for size, rotation, see-through (to check placement), and brightness to match the new photo. Flip, outline, shadow, nudge arrows, duplicate, send back, change background, save.
 
 ## Cut out (main tool)
 
