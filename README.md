@@ -4,6 +4,14 @@ A phone-first photo editor in a single HTML file, built as a stand-in for PicSay
 
 **Use it:** https://nathan-san1981.github.io/darkroom/ — in Safari, tap Share → Add to Home Screen to run it full-screen like an app.
 
+## Fun mode
+
+Tap **Fun** in the header for a guided cut-and-paste flow:
+
+1. **Cut:** pick a photo, paint over the part you want (brush, eraser or lasso), tap Done.
+2. **Place:** pick the photo to paste onto, or paste onto the same one. Saved cutouts stay in a tray.
+3. **Adjust:** drag to move; drag the ↻ handle to spin around the center; drag the ⤡ corner or pinch to resize. Sliders for size, rotation, see-through (to check placement), and brightness to match the new photo. Flip, outline, shadow, nudge arrows, duplicate, send back, change background, save.
+
 ## Cut out (main tool)
 
 - **Brush / Eraser:** shade over what you want with your finger; erase to clean up edges. Brush size stays constant on screen, so pinch-zooming gives a finer brush.
