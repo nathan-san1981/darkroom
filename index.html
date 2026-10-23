@@ -49,6 +49,7 @@ canvas#view{display:block;max-width:100%;max-height:100%}
 #empty p{margin:0;color:var(--muted);max-width:30ch}
 #empty .big{font:800 28px/1.1 var(--ui);color:var(--fg);text-wrap:balance;letter-spacing:-.01em}
 #empty{overflow-y:auto;justify-content:safe center;z-index:5}
+#pickPreview{width:96px;height:96px;object-fit:contain;border:2px solid var(--sel)}
 #samples{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;width:100%;max-width:560px}
 #samples button{padding:0;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--line)}
 #samples img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
@@ -127,6 +128,7 @@ nav button.on{color:var(--accent);background:var(--panel2)}
     <canvas id="view" width="10" height="10" hidden></canvas>
     <div id="empty">
       <div class="big" id="pickTitle">Open a photo to start.</div>
+      <img id="pickPreview" class="trayItem" alt="Cutout to paste" hidden>
       <p id="pickSub">Pick a sample below, choose one from your library, or copy a photo and paste it here.</p>
       <div id="samples"></div>
       <div class="startrow">
@@ -249,7 +251,8 @@ function loadImage(src){
 $('#file').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>loadImage(r.result); r.readAsDataURL(f); e.target.value=''; });
 $('#openBtn').onclick=()=>$('#file').click();
 let pickCb=null;
-function openPicker(title,sub,cb){ pickCb=cb||null; $('#pickTitle').textContent=title||'Open a photo to start.'; $('#pickSub').textContent=sub||'Pick a sample below, choose one from your library, or copy a photo and paste it here.'; $('#empty').hidden=false; $('#cancelStart').hidden=!orig; }
+function openPicker(title,sub,cb){ pickCb=cb||null; $('#pickTitle').textContent=title||'Open a photo to start.'; $('#pickSub').textContent=sub||'Pick a sample below, choose one from your library, or copy a photo and paste it here.'; $('#empty').hidden=false; $('#cancelStart').hidden=!orig;
+  const pv=$('#pickPreview'); const t=cb&&tray.filter(Boolean)[0]; pv.hidden=!t; if(t) pv.src=t.thumb; }
 $('#openBtn2').onclick=()=>openPicker();
 $('#cancelStart').onclick=()=>{ $('#empty').hidden=true; pickCb=null; };
 SAMPLES.forEach(s=>{ const b=mk('button',{title:s.name}); b.append(mk('img',{src:s.thumb,alt:s.name}), mk('span',{textContent:s.name})); b.onclick=()=>loadImage(s.src); $('#samples').append(b); });
@@ -491,6 +494,8 @@ async function cutAction(kind){ if(!cut.has) return; await busy(kind==='erase'?'
   const P=piece; pushSelUndo(); cut.mask.getContext('2d').clearRect(0,0,cut.mask.width,cut.mask.height); cut.vis.getContext('2d').clearRect(0,0,cut.vis.width,cut.vis.height); cut.has=false;
   if(kind==='paste'||kind==='cut') placeCutout(P.canvas,P.b.x+P.b.w/2,P.b.y+P.b.h/2);
   else { render(); showPanel(); toast(kind==='copy'?'Saved to your cutouts':'Erased'); } }
+async function cutToNewPhoto(){ if(!cut.has) return; await busy('Cutting…'); const pc=cutPiece(); if(!pc){ toast('Nothing selected'); return; } addToTray(pc.canvas); pushSelUndo(); cut.mask.getContext('2d').clearRect(0,0,cut.mask.width,cut.mask.height); cut.vis.getContext('2d').clearRect(0,0,cut.vis.width,cut.vis.height); cut.has=false; render();
+  openPicker('Pick the photo to paste onto','Your cutout is saved. It will land in the middle of the photo you pick, ready to move.',()=>{ if(fun.on){ funStep('adjust'); funPlace(tray[0]); } else { setTool('overlay'); placeCutout(tray[0].c); } }); }
 function placeCutout(c,x,y){ let w=c.width,h=c.height; if(x==null){ const lim=Math.min(orig.width,orig.height)*.8, s=Math.min(1,lim/Math.max(w,h)); w*=s; h*=s; x=orig.width/2; y=orig.height/2; }
   addObject({type:'sticker',cut:true,img:c,w,h,x,y,rot:0,scale:1,opacity:1,blend:'source-over',flip:false,outline:null,shadow:false}); setTool('overlay',true); updateObjbar(); setHint('Drag to move · drag the blue knob to spin and resize'); setTimeout(()=>{ if(tool==='overlay') setHint(''); },3000); }
 function copyCutToClipboard(){ if(!navigator.clipboard?.write||typeof ClipboardItem==='undefined'){ toast('Clipboard not available here. Use Save PNG.'); return; }
@@ -513,7 +518,7 @@ function pasteTarget(label){ const z=mk('div',{className:'pasteZone',contentEdit
 function trayRow(){ const r=mk('div',{className:'row tray'+(trayEdit?' editing':'')}); r.append(mk('span',{className:'lbl',textContent:'Cutouts'}));
   const items=tray.filter(Boolean); if(!items.length) r.append(mk('span',{className:'note',textContent:'Cutouts you make appear here, ready to paste on any photo.'}));
   items.forEach(t=>{ const b=mk('button',{className:'trayItem',title:trayEdit?'Remove':'Paste onto photo'}); b.append(mk('img',{src:t.thumb,alt:'Cutout'})); b.onclick=()=>{ if(trayEdit){ tray.splice(tray.indexOf(t),1); saveTray(); showPanel(); return; } placeCutout(t.c); }; r.append(b); });
-  if(items.length) r.append(chip(trayEdit?'Done':'Remove…',trayEdit,()=>{ trayEdit=!trayEdit; showPanel(); }));
+  if(items.length) r.append(chip('Onto a new photo…',false,()=>openPicker('Pick the photo to paste onto','Your latest cutout will land in the middle of it.',()=>{ setTool('overlay'); placeCutout(items[0].c); })), chip(trayEdit?'Done':'Remove…',trayEdit,()=>{ trayEdit=!trayEdit; showPanel(); }));
   r.append(pasteTarget('Paste image')); return r; }
 
 // =============== pointer handling ===============
@@ -682,7 +687,8 @@ function showPanel(){ panel.replaceChildren(); if(!orig) return; const P=panel; 
     if(cut.undo.length) r0.append(chip('Undo stroke',false,()=>{ restoreSel(cut.undo.pop()); render(); showPanel(); }));
     r0.append(chip('Invert',false,invertSel)); if(cut.has) r0.append(chip('Clear',false,()=>{ pushSelUndo(); clearSel(); })); P.append(r0);
     if(cut.mode!=='lasso') P.append(slider('Brush size',4,140,cut.size,v=>cut.size=v));
-    if(cut.has){ const r=mk('div',{className:'row'}); r.append(chip('Paste as layer',true,()=>cutAction('paste')), chip('Cut out & move',false,()=>cutAction('cut')), chip('Save to cutouts',false,()=>cutAction('copy')), chip('Copy to clipboard',false,copyCutToClipboard), chip('Save PNG',false,saveCutPng), chip('Erase from photo',false,()=>cutAction('erase')), chip('Crop photo to shape',false,cropToShape)); P.append(r); }
+    if(cut.has){ const go=mk('button',{className:'primary bigbtn',textContent:'Put it on another photo →'}); go.onclick=cutToNewPhoto; P.append(mk('div',{className:'row'},go));
+      const r=mk('div',{className:'row'}); r.append(chip('Paste on this photo',false,()=>cutAction('paste')), chip('Cut & move here',false,()=>cutAction('cut')), chip('Save PNG',false,saveCutPng), chip('Copy',false,copyCutToClipboard), chip('Erase it',false,()=>cutAction('erase')), chip('Crop to shape',false,cropToShape), chip('Keep for later',false,()=>cutAction('copy'))); P.append(r); }
     else P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Paint over what you want with your finger. Eraser cleans up edges. Pinch with two fingers to zoom in, and the brush gets finer as you zoom.'})));
     P.append(slider('Edge softness',0,20,cut.feather,v=>cut.feather=v), trayRow()); return; }
   if(tool==='adjust'){
