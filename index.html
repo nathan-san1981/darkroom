@@ -32,13 +32,13 @@ img{max-width:100%}
 html,body{height:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.3 var(--ui);overflow:hidden;touch-action:none;-webkit-user-select:none;user-select:none}
 #app{height:100%;display:flex;flex-direction:column}
-header{display:flex;align-items:center;gap:4px;overflow:hidden;padding:6px max(16px,env(safe-area-inset-right,0px)) 6px max(16px,env(safe-area-inset-left,0px));background:var(--panel);border-bottom:1px solid var(--line)}
+header{display:flex;align-items:center;gap:4px;overflow:hidden;padding:4px max(16px,env(safe-area-inset-right,0px)) 6px max(16px,env(safe-area-inset-left,0px));background:var(--panel);border-bottom:1px solid var(--line)}
 header h1{font:800 15px/1 var(--ui);margin:0;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 header h1 b{color:var(--accent)}
-button{font:600 13px var(--ui);color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 11px;cursor:pointer;touch-action:manipulation;white-space:nowrap}
+button{font:600 12.5px var(--ui);color:var(--fg);background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:6px 10px;cursor:pointer;touch-action:manipulation;white-space:nowrap}
 button:focus-visible{outline:2px solid var(--sel);outline-offset:1px}
 button.primary{background:var(--accent);color:var(--accent-ink);border-color:transparent}
-button.icon{padding:7px 8px;font-size:15px;line-height:1;min-width:32px}
+button.icon{padding:6px 7px;font-size:14px;line-height:1;min-width:30px}
 header button{padding-left:8px;padding-right:8px}
 button:disabled{opacity:.35}
 button.chip.on{background:var(--fg);color:var(--bg);border-color:transparent}
@@ -74,18 +74,20 @@ body.fun #funbar{display:flex}
 #funbar .step.on b{background:var(--accent);color:var(--accent-ink)}
 #funbar .step.done b{background:var(--fg);color:var(--bg)}
 #funBtn.on{background:var(--accent);color:var(--accent-ink);border-color:transparent}
-.bigbtn{width:100%;padding:12px;font-size:15px;border-radius:11px}
+.bigbtn{width:100%;padding:10px;font-size:14px;border-radius:11px}
 .nudge{display:grid;grid-template-columns:repeat(3,34px);gap:3px}
 .nudge button{padding:6px 0}
 #objbar{position:absolute;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:3px}
 #hint{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.6);color:#fff;font-size:12px;padding:5px 10px;border-radius:14px;pointer-events:none;max-width:90%;text-align:center}
-#panel{background:var(--panel);border-top:1px solid var(--line);padding:8px max(16px,env(safe-area-inset-right,0px)) 8px max(16px,env(safe-area-inset-left,0px));min-height:72px;max-height:38vh;overflow-y:auto;overscroll-behavior:contain}
-.row{display:flex;gap:6px;align-items:center;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;min-height:36px}
+#panel{background:var(--panel);border-top:1px solid var(--line);padding:6px max(16px,env(safe-area-inset-right,0px)) 6px max(16px,env(safe-area-inset-left,0px));min-height:44px;max-height:26vh;overflow-y:auto;overscroll-behavior:contain}
+body.notools #panel{display:none}
+#toolsBtn{position:absolute;left:calc(12px + env(safe-area-inset-left,0px));bottom:10px;z-index:4;background:rgba(0,0,0,.6);color:#fff;border-color:rgba(255,255,255,.25)}
+.row{display:flex;gap:5px;align-items:center;overflow-x:auto;padding-bottom:1px;scrollbar-width:none;min-height:32px}
 .row::-webkit-scrollbar{display:none}
-.row+.row{margin-top:6px}
-.lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;white-space:nowrap;min-width:78px}
+.row+.row{margin-top:3px}
+.lbl{font-size:10.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;min-width:70px}
 .val{font-variant-numeric:tabular-nums;font-size:12px;color:var(--muted);min-width:34px;text-align:right}
-input[type=range]{flex:1;min-width:80px;accent-color:var(--accent);height:28px}
+input[type=range]{flex:1;min-width:80px;accent-color:var(--accent);height:24px}
 input[type=text]{font:600 15px var(--ui);background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:9px;padding:8px 11px;flex:1;min-width:0}
 input[type=color]{width:34px;height:34px;border:1px solid var(--line);border-radius:9px;padding:2px;background:var(--panel2)}
 select{font:600 13px var(--ui);background:var(--panel2);color:var(--fg);border:1px solid var(--line);border-radius:9px;padding:7px 9px}
@@ -94,10 +96,10 @@ select{font:600 13px var(--ui);background:var(--panel2);color:var(--fg);border:1
 .fontbtn{font-size:17px;padding:5px 10px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px}
 .grid2 .row{min-width:0}
-nav{display:flex;background:var(--panel);border-top:1px solid var(--line);padding:5px max(16px,env(safe-area-inset-right,0px)) calc(5px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));gap:2px;overflow-x:auto;scrollbar-width:none}
+nav{display:flex;background:var(--panel);border-top:1px solid var(--line);padding:3px max(16px,env(safe-area-inset-right,0px)) calc(5px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));gap:2px;overflow-x:auto;scrollbar-width:none}
 nav::-webkit-scrollbar{display:none}
-nav button{flex:1;min-width:58px;background:transparent;border:0;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:10.5px;color:var(--muted);padding:4px 2px;border-radius:9px;letter-spacing:.02em}
-nav button b{font-size:17px;line-height:1;font-weight:800}
+nav button{flex:1;min-width:54px;background:transparent;border:0;display:flex;flex-direction:column;align-items:center;gap:1px;font-size:10px;color:var(--muted);padding:4px 2px;border-radius:9px;letter-spacing:.02em}
+nav button b{font-size:15px;line-height:1;font-weight:800}
 nav button.on{color:var(--accent);background:var(--panel2)}
 .layer{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);margin-bottom:4px}
 .layer.on{border-color:var(--sel)}
@@ -143,6 +145,7 @@ nav button.on{color:var(--accent);background:var(--panel2)}
     <div id="hint" hidden></div>
     <canvas id="loupe" width="120" height="120" hidden></canvas>
     <button id="fitBtn" hidden>Fit to screen</button>
+    <button id="toolsBtn" hidden>Hide tools</button>
   </div>
   <div id="panel"></div>
   <div id="funbar"></div>
@@ -239,7 +242,7 @@ function loadImage(src){
   const img=new Image(); img.onload=()=>{
     const max=3000, s=Math.min(1,max/Math.max(img.width,img.height)); const w=Math.round(img.width*s), h=Math.round(img.height*s);
     orig=cvs(w,h); orig.getContext('2d').drawImage(img,0,0,w,h); doodle=cvs(w,h); objects=[]; sel=null; history=[]; redo=[]; syncUndo(); adj=DEF();
-    resetSel(); refreshPreview(); $('#empty').hidden=true; view.hidden=false; ['#saveBtn','#cmpBtn','#layersBtn'].forEach(s=>$(s).disabled=false);
+    resetSel(); refreshPreview(); $('#empty').hidden=true; view.hidden=false; ['#saveBtn','#cmpBtn','#layersBtn'].forEach(s=>$(s).disabled=false); $('#toolsBtn').hidden=false; $('#toolsBtn').textContent=document.body.classList.contains('notools')?'Show tools':'Hide tools';
     resetVZ(); layout(); const cb=pickCb; pickCb=null; if(cb) cb(); else setTool(fun.on?'cut':'cut');
   }; img.src=src;
 }
@@ -421,6 +424,9 @@ function applyVZ(){ view.style.transformOrigin='0 0'; view.style.transform=vz.s=
 function resetVZ(){ vz={s:1,x:0,y:0}; applyVZ(); }
 function resizeBacking(){ if(!orig) return; const dpr=Math.min(window.devicePixelRatio||1,3); const want=Math.min(orig.width*fit*dpr*vz.s, 4096); const sc=want/(orig.width*fit); view.width=Math.round(orig.width*fit*sc); view.height=Math.round(orig.height*fit*sc); render(); }
 $('#fitBtn').onclick=()=>{ resetVZ(); resizeBacking(); };
+function setTools(show){ document.body.classList.toggle('notools',!show); $('#toolsBtn').textContent=show?'Hide tools':'Show tools'; try{ localStorage.setItem('darkroom-tools',show?'1':'0'); }catch(_){} setTimeout(layout,0); }
+$('#toolsBtn').onclick=()=>setTools(document.body.classList.contains('notools'));
+try{ if(localStorage.getItem('darkroom-tools')==='0') document.body.classList.add('notools'); }catch(_){}
 function startVZoom(){
   if(gesture){ if(gesture.kind==='lasso'){ cut.path=null; hideLoupe(); } else if(gesture.kind==='cutbrush'){ restoreSel(cut.undo.pop()); cut.cursor=null; hideLoupe(); } else if(gesture.kind==='doodle'||gesture.kind==='retouch'){ undo(); redo=[]; syncUndo(); } }
   const [a,b]=[...cptr.values()]; const r=view.getBoundingClientRect();
@@ -670,7 +676,7 @@ function funPanel(P){
 // =============== tools / panels ===============
 const TOOLS=[['cut','✂','Cut out'],['adjust','◑','Adjust'],['color','◉','Color'],['effects','✦','Effects'],['crop','⌗','Crop'],['retouch','✚','Retouch'],['draw','✎','Draw'],['text','A','Text'],['balloon','❝','Balloon'],['overlay','▣','Overlay']];
 TOOLS.forEach(([id,ic,lb])=>{ const b=mk('button',{id:'tab-'+id}); b.append(mk('b',{textContent:ic}),lb); b.onclick=()=>setTool(id); nav.append(b); });
-function setTool(t,keepSel){ if(tool==='crop'&&t!=='crop'){ crop.on=false; crop.rect=null; } tool=t; if(t==='crop'){ crop.on=true; sel=null; } if((t==='draw'||t==='retouch'||t==='cut')&&!keepSel){ sel=null; } hideLoupe(); setHint(t==='cut'&&!cut.has?(cut.mode==='lasso'?'Trace around what you want to cut out':'Paint over what you want to cut out'):''); nav.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.id==='tab-'+t)); updateObjbar(); render(); showPanel(); }
+function setTool(t,keepSel){ if(document.body.classList.contains('notools')&&t!==tool) setTools(true); if(tool==='crop'&&t!=='crop'){ crop.on=false; crop.rect=null; } tool=t; if(t==='crop'){ crop.on=true; sel=null; } if((t==='draw'||t==='retouch'||t==='cut')&&!keepSel){ sel=null; } hideLoupe(); setHint(t==='cut'&&!cut.has?(cut.mode==='lasso'?'Trace around what you want to cut out':'Paint over what you want to cut out'):''); nav.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.id==='tab-'+t)); updateObjbar(); render(); showPanel(); }
 function showPanel(){ panel.replaceChildren(); if(!orig) return; const P=panel; adjSnapped=false; funSliderSync=null;
   if(fun.on){ funPanel(P); return; }
   if(tool==='cut'){
