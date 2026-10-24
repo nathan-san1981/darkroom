@@ -262,7 +262,8 @@ document.addEventListener('paste',e=>{ const f=imageFromClipboard(e); e.preventD
   const asLayer=orig&&$('#empty').hidden; const r=new FileReader(); r.onload=()=>{ if(!asLayer){ loadImage(r.result); return; } const im=new Image(); im.onload=()=>{ const c=cvs(im.naturalWidth,im.naturalHeight); c.getContext('2d').drawImage(im,0,0); addToTray(c); placeCutout(c); toast('Pasted as a layer'); }; im.src=r.result; }; r.readAsDataURL(f); });
 $('#pasteZone').addEventListener('beforeinput',e=>{ if(e.inputType!=='insertFromPaste') e.preventDefault(); });
 $('#stickerFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ const im=new Image(); im.onload=()=>{ const s=Math.min(1,(orig.width*.5)/im.width,(orig.height*.5)/im.height); addObject({type:'sticker',img:im,w:im.width*s,h:im.height*s,x:orig.width/2,y:orig.height/2,rot:0,scale:1,opacity:1,blend:'source-over',flip:false}); }; im.src=r.result; }; r.readAsDataURL(f); e.target.value=''; });
-function refreshPreview(){ const s=Math.min(1,PREVIEW_MAX/Math.max(orig.width,orig.height)); pv=cvs(orig.width*s,orig.height*s); pv.getContext('2d').drawImage(orig,0,0,pv.width,pv.height); rebuildBase(); }
+let photoVer=0;
+function refreshPreview(){ photoVer++; const s=Math.min(1,PREVIEW_MAX/Math.max(orig.width,orig.height)); pv=cvs(orig.width*s,orig.height*s); pv.getContext('2d').drawImage(orig,0,0,pv.width,pv.height); rebuildBase(); }
 
 // =============== processing pipeline ===============
 const FILTER_OK = 'filter' in vctx;
@@ -343,9 +344,10 @@ function render(){ if(!base) return; const dpr=view.width/(orig.width*fit); vctx
   drawScene(vctx, base, true);
   if(crop.on && crop.rect){ const c=crop.rect; vctx.save(); vctx.fillStyle='rgba(0,0,0,.6)'; vctx.beginPath(); vctx.rect(0,0,orig.width,orig.height); vctx.rect(c.x,c.y,c.w,c.h); vctx.fill('evenodd'); vctx.strokeStyle='#fff'; vctx.lineWidth=1.5/fit; vctx.strokeRect(c.x,c.y,c.w,c.h); vctx.globalAlpha=.5; for(let i=1;i<3;i++){ vctx.beginPath(); vctx.moveTo(c.x+c.w*i/3,c.y); vctx.lineTo(c.x+c.w*i/3,c.y+c.h); vctx.moveTo(c.x,c.y+c.h*i/3); vctx.lineTo(c.x+c.w,c.y+c.h*i/3); vctx.stroke(); } vctx.restore(); }
   if(tool==='cut'){ const u=1/(fit*vz.s);
-    if(cut.vis&&cut.has){ vctx.save(); vctx.globalAlpha=.45; vctx.drawImage(cut.vis,0,0,orig.width,orig.height); vctx.restore(); }
+    if(cut.vis&&cut.has){ vctx.save(); vctx.globalAlpha=.55; vctx.drawImage(cut.dim,0,0,orig.width,orig.height); vctx.globalAlpha=.28; vctx.drawImage(cut.vis,0,0,orig.width,orig.height); vctx.restore(); }
     if(cut.path&&cut.path.length>1){ const P=cut.path; vctx.save(); vctx.beginPath(); vctx.moveTo(P[0].x,P[0].y); for(const q of P) vctx.lineTo(q.x,q.y); vctx.lineJoin='round'; vctx.lineWidth=3*u; vctx.strokeStyle='#000'; vctx.stroke(); vctx.lineWidth=1.6*u; vctx.strokeStyle='#fff'; vctx.setLineDash([6*u,4*u]); vctx.stroke(); vctx.restore(); }
-    if(cut.cursor&&cut.mode!=='lasso'){ const p=cut.cursor.p; vctx.save(); vctx.beginPath(); vctx.arc(p.x,p.y,cut.size/2*u,0,Math.PI*2); vctx.lineWidth=2.5*u; vctx.strokeStyle='rgba(0,0,0,.6)'; vctx.stroke(); vctx.lineWidth=1.2*u; vctx.strokeStyle='#fff'; vctx.stroke(); vctx.restore(); } }
+    if(cut.mode==='magic') for(const q of magic.points){ vctx.save(); vctx.beginPath(); vctx.arc(q.x,q.y,7*u,0,Math.PI*2); vctx.fillStyle=q.add?'#2ecc71':'#ff4d4d'; vctx.fill(); vctx.lineWidth=2*u; vctx.strokeStyle='#fff'; vctx.stroke(); vctx.fillStyle='#fff'; vctx.font=`bold ${10*u}px sans-serif`; vctx.textAlign='center'; vctx.textBaseline='middle'; vctx.fillText(q.add?'+':'−',q.x,q.y+.5*u); vctx.restore(); }
+    if(cut.cursor&&cut.mode!=='lasso'&&cut.mode!=='magic'){ const p=cut.cursor.p; vctx.save(); vctx.beginPath(); vctx.arc(p.x,p.y,cut.size/2*u,0,Math.PI*2); vctx.lineWidth=2.5*u; vctx.strokeStyle='rgba(0,0,0,.6)'; vctx.stroke(); vctx.lineWidth=1.2*u; vctx.strokeStyle='#fff'; vctx.stroke(); vctx.restore(); } }
   if(tool==='retouch' && ret.mode==='clone' && ret.cloneSrc){ vctx.save(); vctx.strokeStyle='#58c4ff'; vctx.lineWidth=2/fit; vctx.beginPath(); vctx.arc(ret.cloneSrc.x,ret.cloneSrc.y,ret.size*imgScale()/2,0,Math.PI*2); vctx.stroke(); vctx.restore(); }
 }
 function drawScene(ctx, baseImg, showSel){
@@ -437,19 +439,20 @@ function startVZoom(){
 }
 
 // =============== cut out (brush / eraser / lasso selection mask) ===============
-const cut={mode:'brush',size:40,feather:2,mask:null,vis:null,ms:1,has:false,undo:[],path:null,cursor:null};
+const cut={mode:'magic',size:40,feather:2,mask:null,vis:null,ms:1,has:false,undo:[],path:null,cursor:null};
 const SEL_COLOR='#ff2d6f';
 function ensureMask(){ const ms=Math.min(1,1600/Math.max(orig.width,orig.height)); const w=Math.max(1,Math.round(orig.width*ms)), h=Math.max(1,Math.round(orig.height*ms));
-  if(!cut.mask||cut.mask.width!==w||cut.mask.height!==h){ cut.ms=ms; cut.mask=cvs(w,h); cut.vis=cvs(w,h); cut.has=false; cut.undo=[]; } }
-function resetSel(){ cut.mask=null; cut.vis=null; cut.has=false; cut.undo=[]; cut.path=null; cut.cursor=null; }
+  if(!cut.mask||cut.mask.width!==w||cut.mask.height!==h){ cut.ms=ms; cut.mask=cvs(w,h); cut.vis=cvs(w,h); cut.dim=cvs(w,h); fillDim(); cut.has=false; cut.undo=[]; } }
+function fillDim(){ const g=cut.dim.getContext('2d'); g.globalCompositeOperation='source-over'; g.clearRect(0,0,cut.dim.width,cut.dim.height); g.fillStyle='#000'; g.fillRect(0,0,cut.dim.width,cut.dim.height); }
+function resetSel(){ magicReset(); cut.mask=null; cut.vis=null; cut.has=false; cut.undo=[]; cut.path=null; cut.cursor=null; }
 function pushSelUndo(){ if(!cut.mask) return; cut.undo.push({m:cloneCanvas(cut.mask),has:cut.has}); if(cut.undo.length>8) cut.undo.shift(); }
-function rebuildVis(){ const g=cut.vis.getContext('2d'); g.clearRect(0,0,cut.vis.width,cut.vis.height); g.drawImage(cut.mask,0,0); g.globalCompositeOperation='source-in'; g.fillStyle=SEL_COLOR; g.fillRect(0,0,cut.vis.width,cut.vis.height); g.globalCompositeOperation='source-over'; }
+function rebuildVis(){ fillDim(); const dg=cut.dim.getContext('2d'); dg.globalCompositeOperation='destination-out'; dg.drawImage(cut.mask,0,0); dg.globalCompositeOperation='source-over'; const g=cut.vis.getContext('2d'); g.clearRect(0,0,cut.vis.width,cut.vis.height); g.drawImage(cut.mask,0,0); g.globalCompositeOperation='source-in'; g.fillStyle=SEL_COLOR; g.fillRect(0,0,cut.vis.width,cut.vis.height); g.globalCompositeOperation='source-over'; }
 function restoreSel(u){ if(!u||!cut.mask) return; const g=cut.mask.getContext('2d'); g.clearRect(0,0,cut.mask.width,cut.mask.height); g.drawImage(u.m,0,0); cut.has=u.has; rebuildVis(); }
-function clearSel(){ if(cut.mask){ cut.mask.getContext('2d').clearRect(0,0,cut.mask.width,cut.mask.height); cut.vis.getContext('2d').clearRect(0,0,cut.vis.width,cut.vis.height); } cut.has=false; render(); showPanel(); }
+function clearSel(){ magicReset(); if(cut.mask){ cut.mask.getContext('2d').clearRect(0,0,cut.mask.width,cut.mask.height); cut.vis.getContext('2d').clearRect(0,0,cut.vis.width,cut.vis.height); fillDim(); } cut.has=false; render(); showPanel(); }
 function selStroke(a,b){ const ms=cut.ms, lw=Math.max(1,cut.size/(fit*vz.s)*ms), erase=cut.mode==='erase';
-  for(const [c,col] of [[cut.mask,'#fff'],[cut.vis,SEL_COLOR]]){ const g=c.getContext('2d'); g.save(); g.lineCap='round'; g.lineJoin='round'; g.lineWidth=lw; g.globalCompositeOperation=erase?'destination-out':'source-over'; g.strokeStyle=col; g.beginPath(); g.moveTo(a.x*ms,a.y*ms); g.lineTo(b.x*ms+.01,b.y*ms+.01); g.stroke(); g.restore(); }
+  for(const [c,col,inv] of [[cut.mask,'#fff',false],[cut.vis,SEL_COLOR,false],[cut.dim,'#000',true]]){ const g=c.getContext('2d'); g.save(); g.lineCap='round'; g.lineJoin='round'; g.lineWidth=lw; g.globalCompositeOperation=(erase!==inv)?'destination-out':'source-over'; g.strokeStyle=col; g.beginPath(); g.moveTo(a.x*ms,a.y*ms); g.lineTo(b.x*ms+.01,b.y*ms+.01); g.stroke(); g.restore(); }
   if(!erase) cut.has=true; }
-function selFillPath(P){ const ms=cut.ms; for(const [c,col] of [[cut.mask,'#fff'],[cut.vis,SEL_COLOR]]){ const g=c.getContext('2d'); g.beginPath(); g.moveTo(P[0].x*ms,P[0].y*ms); for(const q of P) g.lineTo(q.x*ms,q.y*ms); g.closePath(); g.fillStyle=col; g.fill(); } cut.has=true; }
+function selFillPath(P){ const ms=cut.ms; for(const [c,col,inv] of [[cut.mask,'#fff',false],[cut.vis,SEL_COLOR,false],[cut.dim,'#000',true]]){ const g=c.getContext('2d'); g.save(); if(inv) g.globalCompositeOperation='destination-out'; g.beginPath(); g.moveTo(P[0].x*ms,P[0].y*ms); for(const q of P) g.lineTo(q.x*ms,q.y*ms); g.closePath(); g.fillStyle=col; g.fill(); g.restore(); } cut.has=true; }
 function invertSel(){ ensureMask(); pushSelUndo(); const g=cut.mask.getContext('2d'), old=cloneCanvas(cut.mask); g.fillStyle='#fff'; g.fillRect(0,0,cut.mask.width,cut.mask.height); g.globalCompositeOperation='destination-out'; g.drawImage(old,0,0); g.globalCompositeOperation='source-over'; cut.has=true; rebuildVis(); render(); showPanel(); }
 function selBounds(pad){ if(!cut.mask||!cut.has) return null; const m=cut.mask, W=m.width, H=m.height, d=m.getContext('2d').getImageData(0,0,W,H).data; let x0=W,y0=H,x1=-1,y1=-1;
   for(let y=0;y<H;y++){ const row=y*W*4; for(let x=0;x<W;x++){ if(d[row+x*4+3]>10){ if(x<x0)x0=x; if(x>x1)x1=x; if(y<y0)y0=y; if(y>y1)y1=y; } } }
@@ -487,14 +490,63 @@ function eraseSel(){ const bb=selBounds(0); if(!bb) return; snapshot('orig'); co
   const filled=blurred(pushPull(small),1.2); const patch=cvs(b.w,b.h), pg=patch.getContext('2d'); pg.drawImage(filled,0,0,b.w,b.h); addNoise(patch,7);
   const soft=selMask(b,Math.max(2,4*imgScale()),dil*2); pg.globalCompositeOperation='destination-in'; pg.drawImage(soft,0,0);
   orig.getContext('2d').drawImage(patch,b.x,b.y); const dg=doodle.getContext('2d'); dg.save(); dg.globalCompositeOperation='destination-out'; dg.drawImage(soft,b.x,b.y); dg.restore(); refreshPreview(); }
+
+// =============== magic select (AI tap-to-select, with color fallback) ===============
+const MAGIC_LIB='https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.0.2';
+const MAGIC_MODEL='Xenova/slimsam-77-uniform';
+const magic={state:'idle',loading:null,T:null,model:null,processor:null,inputs:null,emb:null,embVer:-1,points:[],add:true,tol:34,running:false,again:false,prog:{},small:null,smallVer:-1,status:''};
+function magicStatus(t){ magic.status=t; setHint(t); }
+function loadAI(){ if(magic.loading) return magic.loading; magic.state='loading';
+  magic.loading=(async()=>{ const T=await import(MAGIC_LIB); T.env.allowLocalModels=false; magic.T=T;
+    const cb=d=>{ if(d&&d.status==='progress'&&d.file){ magic.prog[d.file]={l:d.loaded||0,t:d.total||0}; let l=0,t=0; for(const k in magic.prog){ l+=magic.prog[k].l; t+=magic.prog[k].t; } if(t) magicStatus('Downloading magic (one time) '+Math.round(l/t*100)+'%'); } };
+    magic.model=await T.SamModel.from_pretrained(MAGIC_MODEL,{progress_callback:cb}); magic.processor=await T.AutoProcessor.from_pretrained(MAGIC_MODEL,{progress_callback:cb}); magic.state='ready'; })()
+    .catch(err=>{ console.warn('Magic AI unavailable',err); magic.state='failed'; });
+  return magic.loading; }
+async function ensureEmbedding(){ if(magic.embVer===photoVer&&magic.emb) return; magicStatus('Studying the photo…'); const T=magic.T; const g=pv.getContext('2d'); const id=g.getImageData(0,0,pv.width,pv.height);
+  let img=new T.RawImage(id.data,pv.width,pv.height,4); if(img.rgb) img=img.rgb(); magic.inputs=await magic.processor(img); magic.emb=await magic.model.get_image_embeddings(magic.inputs); magic.embVer=photoVer; }
+async function aiMask(){ const T=magic.T; const rs=magic.inputs.reshaped_input_sizes[0];
+  const pts=magic.points.map(q=>[q.x/orig.width*rs[1], q.y/orig.height*rs[0]]);
+  const input_points=new T.Tensor('float32',pts.flat(),[1,1,pts.length,2]); const input_labels=new T.Tensor('int64',magic.points.map(q=>BigInt(q.add?1:0)),[1,1,pts.length]);
+  const out=await magic.model({...magic.emb,input_points,input_labels});
+  const masks=await magic.processor.post_process_masks(out.pred_masks,magic.inputs.original_sizes,magic.inputs.reshaped_input_sizes);
+  const sc=out.iou_scores.data; let best=0; for(let i=1;i<sc.length;i++) if(sc[i]>sc[best]) best=i;
+  const m=masks[0], H=m.dims[m.dims.length-2], W=m.dims[m.dims.length-1], off=best*W*H, a=new Uint8Array(W*H); for(let i=0;i<W*H;i++) a[i]=m.data[off+i]?1:0; return {a,w:W,h:H}; }
+function smartRegion(seed){ const S=Math.min(1,600/Math.max(pv.width,pv.height)), w=Math.max(1,Math.round(pv.width*S)), h=Math.max(1,Math.round(pv.height*S));
+  if(!magic.small||magic.smallVer!==photoVer||magic.small.w!==w){ const c=cvs(w,h), g=c.getContext('2d'); g.drawImage(blurred(pv,1.5),0,0,w,h); magic.small={w,h,d:g.getImageData(0,0,w,h).data}; magic.smallVer=photoVer; }
+  const d=magic.small.d, sx=clamp(Math.round(seed.x/orig.width*w),0,w-1), sy=clamp(Math.round(seed.y/orig.height*h),0,h-1), out=new Uint8Array(w*h), q=new Int32Array(w*h); let qh=0,qt=0; const i0=sy*w+sx; out[i0]=1; q[qt++]=i0;
+  let mr=d[i0*4],mg=d[i0*4+1],mb=d[i0*4+2],n=1; const TM=magic.tol*3, TN=magic.tol*1.5;
+  while(qh<qt){ const i=q[qh++], x=i%w, y=(i-x)/w, r=d[i*4], g=d[i*4+1], b=d[i*4+2];
+    for(const j of [x>0?i-1:-1, x<w-1?i+1:-1, y>0?i-w:-1, y<h-1?i+w:-1]){ if(j<0||out[j]) continue; const R=d[j*4],G=d[j*4+1],B=d[j*4+2];
+      if(Math.abs(R-mr)+Math.abs(G-mg)+Math.abs(B-mb)<TM && Math.abs(R-r)+Math.abs(G-g)+Math.abs(B-b)<TN){ out[j]=1; q[qt++]=j; n++; mr+=(R-mr)/n; mg+=(G-mg)/n; mb+=(B-mb)/n; } } }
+  return {a:out,w,h}; }
+function smartMask(){ let res=null; for(const q of magic.points){ const r=smartRegion(q); if(!res){ res={a:new Uint8Array(r.w*r.h),w:r.w,h:r.h}; } for(let i=0;i<res.a.length;i++){ if(q.add){ if(r.a[i]) res.a[i]=1; } else if(r.a[i]) res.a[i]=0; } }
+  // smooth: blur + threshold closes pinholes and softens stair-steps
+  const c=alphaCanvas(res), b=blurred(c,1.2), id=b.getContext('2d').getImageData(0,0,res.w,res.h).data; for(let i=0;i<res.a.length;i++) res.a[i]=id[i*4+3]>110?1:0; return res; }
+function alphaCanvas(r){ const c=cvs(r.w,r.h), g=c.getContext('2d'), id=g.createImageData(r.w,r.h); for(let i=0;i<r.a.length;i++){ if(r.a[i]){ id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=255; id.data[i*4+3]=255; } } g.putImageData(id,0,0); return c; }
+function applyMagicResult(r){ ensureMask(); const g=cut.mask.getContext('2d'); g.clearRect(0,0,cut.mask.width,cut.mask.height); g.imageSmoothingQuality='high'; g.drawImage(alphaCanvas(r),0,0,cut.mask.width,cut.mask.height);
+  let any=false; for(let i=0;i<r.a.length;i++) if(r.a[i]){ any=true; break; } cut.has=any; rebuildVis(); render(); showPanel(); }
+async function runMagic(){ if(!magic.points.length) return; if(magic.running){ magic.again=true; return; } magic.running=true;
+  try{ do{ magic.again=false;
+      if(magic.state==='idle') loadAI(); if(magic.state==='loading'){ magicStatus('Getting magic ready…'); await magic.loading; }
+      let r; if(magic.state==='ready'){ try{ await ensureEmbedding(); magicStatus('Finding it…'); r=await aiMask(); }catch(err){ console.warn(err); magic.state='failed'; } }
+      if(magic.state!=='ready'){ r=smartMask(); }
+      applyMagicResult(r);
+    }while(magic.again);
+    magicStatus(magic.state==='ready'?'':'Using color smart select. AI magic works on the GitHub Pages link.'); if(magic.state==='ready') setTimeout(()=>{ if(!magic.running) setHint(''); },10);
+  } finally { magic.running=false; } }
+function magicTap(p){ ensureMask(); if(!magic.add&&!magic.points.length){ toast('Tap the thing you want first'); return; } pushSelUndo(); magic.points.push({x:p.x,y:p.y,add:magic.add}); render(); runMagic(); }
+function magicReset(){ magic.points=[]; }
+function magicChips(row){ row.append(chip('+ Add',magic.add,()=>{ magic.add=true; showPanel(); }), chip('− Remove',!magic.add,()=>{ magic.add=false; showPanel(); })); }
+function magicExtras(P){ if(magic.state==='failed'){ P.append(slider('Color range',4,60,magic.tol,v=>{ magic.tol=v; if(magic.points.length&&!magic.running) applyMagicResult(smartMask()); })); }
+  P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:magic.points.length?'Tap + Add on missed parts, − Remove on extra bits. Brush and Eraser touch up edges.':(magic.state==='failed'?'Tap the thing you want. Smart select grabs the area of similar color around your tap.':'Tap the thing you want and it selects just that. The first use downloads the magic (about 15 MB, once).')}))); }
 const busy=msg=>{ toast(msg); return new Promise(r=>requestAnimationFrame(()=>setTimeout(r,30))); };
 async function cutAction(kind){ if(!cut.has) return; await busy(kind==='erase'?'Erasing…':'Cutting…');
   let piece=null; if(kind!=='erase'){ piece=cutPiece(); if(!piece){ toast('Nothing selected'); return; } addToTray(piece.canvas); }
   if(kind==='cut'||kind==='erase') eraseSel();
-  const P=piece; pushSelUndo(); cut.mask.getContext('2d').clearRect(0,0,cut.mask.width,cut.mask.height); cut.vis.getContext('2d').clearRect(0,0,cut.vis.width,cut.vis.height); cut.has=false;
+  const P=piece; pushSelUndo(); cut.mask.getContext('2d').clearRect(0,0,cut.mask.width,cut.mask.height); cut.vis.getContext('2d').clearRect(0,0,cut.vis.width,cut.vis.height); fillDim(); magicReset(); cut.has=false;
   if(kind==='paste'||kind==='cut') placeCutout(P.canvas,P.b.x+P.b.w/2,P.b.y+P.b.h/2);
   else { render(); showPanel(); toast(kind==='copy'?'Saved to your cutouts':'Erased'); } }
-async function cutToNewPhoto(){ if(!cut.has) return; await busy('Cutting…'); const pc=cutPiece(); if(!pc){ toast('Nothing selected'); return; } addToTray(pc.canvas); pushSelUndo(); cut.mask.getContext('2d').clearRect(0,0,cut.mask.width,cut.mask.height); cut.vis.getContext('2d').clearRect(0,0,cut.vis.width,cut.vis.height); cut.has=false; render();
+async function cutToNewPhoto(){ if(!cut.has) return; await busy('Cutting…'); const pc=cutPiece(); if(!pc){ toast('Nothing selected'); return; } addToTray(pc.canvas); pushSelUndo(); cut.mask.getContext('2d').clearRect(0,0,cut.mask.width,cut.mask.height); cut.vis.getContext('2d').clearRect(0,0,cut.vis.width,cut.vis.height); fillDim(); magicReset(); cut.has=false; render();
   openPicker('Pick the photo to paste onto','Your cutout is saved. It will land in the middle of the photo you pick, ready to move.',()=>{ if(fun.on){ funStep('adjust'); funPlace(tray[0]); } else { setTool('overlay'); placeCutout(tray[0].c); } }); }
 function placeCutout(c,x,y){ let w=c.width,h=c.height; if(x==null){ const lim=Math.min(orig.width,orig.height)*.8, s=Math.min(1,lim/Math.max(w,h)); w*=s; h*=s; x=orig.width/2; y=orig.height/2; }
   addObject({type:'sticker',cut:true,img:c,w,h,x,y,rot:0,scale:1,opacity:1,blend:'source-over',flip:false,outline:null,shadow:false}); setTool('overlay',true); updateObjbar(); setHint('Drag to move · drag the blue knob to spin and resize'); setTimeout(()=>{ if(tool==='overlay') setHint(''); },3000); }
@@ -529,6 +581,7 @@ view.addEventListener('pointerdown',e=>{
   if(ptrs.size===2 && sel && !['draw','retouch'].includes(tool) && !crop.on){ const [a,b]=[...ptrs.values()]; gesture={kind:'pinch',d0:Math.hypot(b.x-a.x,b.y-a.y),a0:Math.atan2(b.y-a.y,b.x-a.x),s0:sel.scale||1,r0:sel.rot||0,cx:sel.x,cy:sel.y,mx:(a.x+b.x)/2,my:(a.y+b.y)/2,w0:sel.w,h0:sel.h}; return; }
   if(ptrs.size===2){ startVZoom(); return; }
   if(ptrs.size>2) return;
+  if(tool==='cut'&&cut.mode==='magic'){ gesture={kind:'magictap',c0:{x:e.clientX,y:e.clientY},p}; return; }
   if(tool==='cut'){ ensureMask(); if(cut.mode==='lasso'){ cut.path=[p]; gesture={kind:'lasso'}; } else { pushSelUndo(); gesture={kind:'cutbrush',last:p}; cut.cursor={p}; selStroke(p,p); } setHint(''); render(); drawLoupe(p,e); return; }
   if(crop.on){ const c=crop.rect; if(c){ const hs=24/fit; const corners=[['tl',c.x,c.y],['tr',c.x+c.w,c.y],['bl',c.x,c.y+c.h],['br',c.x+c.w,c.y+c.h]]; for(const [k,x,y] of corners) if(Math.hypot(p.x-x,p.y-y)<hs){ gesture={kind:'cropcorner',k,start:{...c}}; return; } if(p.x>c.x&&p.x<c.x+c.w&&p.y>c.y&&p.y<c.y+c.h){ gesture={kind:'cropmove',ox:c.x-p.x,oy:c.y-p.y}; return; } } gesture={kind:'cropnew',p0:p}; crop.rect={x:p.x,y:p.y,w:0,h:0}; return; }
   if(tool==='draw' && (draw.mode==='shape'||draw.mode==='censor')){
@@ -566,6 +619,7 @@ function endPtr(e){ ptrs.delete(e.pointerId); cptr.delete(e.pointerId); if(!gest
   if(g.kind==='vzoom'){ if(ptrs.size<2){ gesture=null; resizeBacking(); } return; }
   if(g.kind==='lasso'){ hideLoupe(); gesture=null; const P=cut.path; cut.path=null; if(P.length>=5&&polyArea(P)>=Math.pow(24/(fit*vz.s),2)){ pushSelUndo(); selFillPath(P); } else setHint('Trace all the way around, or switch to Brush'); render(); showPanel(); return; }
   if(g.kind==='cutbrush'){ hideLoupe(); gesture=null; cut.cursor=null; render(); showPanel(); return; }
+  if(g.kind==='magictap'){ gesture=null; if(Math.hypot(e.clientX-g.c0.x,e.clientY-g.c0.y)<12) magicTap(g.p); return; }
   if(g.kind==='cropnew'&&crop.rect&&(crop.rect.w<8||crop.rect.h<8)) crop.rect=null;
   if(g.kind.startsWith('crop')){ render(); showPanel(); }
   if((g.kind==='shapenew'||g.kind==='censornew')&&g.obj){ updateObjbar(); showPanel(); }
@@ -625,7 +679,7 @@ function blendRow(o){ const r=mk('div',{className:'row'}); r.append(mk('span',{c
 // =============== fun mode ===============
 const fun={on:false,step:'cut'};
 const FUN_STEPS=[['cut','Cut'],['place','Place'],['adjust','Adjust']];
-function funStep(st){ fun.step=st; if(st==='cut'){ setTool('cut'); setHint(cut.has?'':'Paint over what you want to cut out'); } else { sel=sel&&sel.type==='sticker'?sel:null; setTool('overlay',true); } renderFunbar(); showPanel(); }
+function funStep(st){ fun.step=st; if(st==='cut'){ setTool('cut'); setHint(cut.has?'':(cut.mode==='magic'?'Tap the thing you want':'Paint over what you want to cut out')); } else { sel=sel&&sel.type==='sticker'?sel:null; setTool('overlay',true); } renderFunbar(); showPanel(); }
 function renderFunbar(){ const bar=$('#funbar'); bar.replaceChildren(); const idx=FUN_STEPS.findIndex(x=>x[0]===fun.step);
   FUN_STEPS.forEach(([k,l],i)=>{ const b=mk('button',{className:'step'+(k===fun.step?' on':i<idx?' done':'')}); b.append(mk('b',{textContent:i<idx?'✓':String(i+1)}),l); b.onclick=()=>{ if(k==='adjust'&&!objects.some(o=>o.type==='sticker')){ toast('Place a cutout first'); return; } funStep(k); }; bar.append(b); });
   const x=mk('button',{textContent:'Full editor'}); x.onclick=toggleFun; bar.append(x); }
@@ -638,10 +692,10 @@ function funPlace(t){ if(!t) return; placeCutout(t.c); fun.step='adjust'; render
 let funSliderSync=null; function syncFunSliders(){ if(funSliderSync) funSliderSync(); }
 function funPanel(P){
   if(fun.step==='cut'){
-    const r0=mk('div',{className:'row'}); [['brush','Brush'],['erase','Eraser'],['lasso','Lasso']].forEach(([m,l])=>r0.append(chip(l,cut.mode===m,()=>{ cut.mode=m; showPanel(); })));
+    const r0=mk('div',{className:'row'}); [['magic','✨ Magic'],['brush','Brush'],['erase','Eraser'],['lasso','Lasso']].forEach(([m,l])=>r0.append(chip(l,cut.mode===m,()=>{ cut.mode=m; if(m==='magic'&&magic.state==='idle') loadAI(); showPanel(); })));
     if(cut.undo.length) r0.append(chip('Undo stroke',false,()=>{ restoreSel(cut.undo.pop()); render(); showPanel(); })); if(cut.has) r0.append(chip('Clear',false,()=>{ pushSelUndo(); clearSel(); })); r0.append(chip('Invert',false,invertSel)); P.append(r0);
-    if(cut.mode!=='lasso') P.append(slider('Brush size',4,140,cut.size,v=>cut.size=v)); P.append(slider('Edge softness',0,20,cut.feather,v=>cut.feather=v));
-    const go=mk('button',{className:'primary bigbtn',textContent:cut.has?'Done. Cut it out →':'Paint over what you want, then tap here'}); go.disabled=!cut.has; go.onclick=async()=>{ await cutAction('copy'); funStep('place'); }; P.append(mk('div',{className:'row'},go));
+    if(cut.mode==='magic'){ const rm=mk('div',{className:'row'}); magicChips(rm); P.append(rm); magicExtras(P); } else if(cut.mode!=='lasso') P.append(slider('Brush size',4,140,cut.size,v=>cut.size=v)); P.append(slider('Edge softness',0,20,cut.feather,v=>cut.feather=v));
+    const go=mk('button',{className:'primary bigbtn',textContent:cut.has?'Done. Cut it out →':(cut.mode==='magic'?'Tap what you want, then tap here':'Paint over what you want, then tap here')}); go.disabled=!cut.has; go.onclick=async()=>{ await cutAction('copy'); funStep('place'); }; P.append(mk('div',{className:'row'},go));
     const r=mk('div',{className:'row'}); r.append(chip('Change photo',false,()=>openPicker('Pick the photo to cut from','',()=>funStep('cut'))), mk('span',{className:'note',textContent:'Pinch with two fingers to zoom in for fine edges.'})); P.append(r);
     const items=tray.filter(Boolean); if(items.length){ const r2=mk('div',{className:'row'}); r2.append(mk('span',{className:'lbl',textContent:'Saved'}), chip('Skip: use a saved cutout →',false,()=>funStep('place'))); P.append(r2); }
   }
@@ -679,17 +733,18 @@ function funPanel(P){
 // =============== tools / panels ===============
 const TOOLS=[['cut','✂','Cut out'],['adjust','◑','Adjust'],['color','◉','Color'],['effects','✦','Effects'],['crop','⌗','Crop'],['retouch','✚','Retouch'],['draw','✎','Draw'],['text','A','Text'],['balloon','❝','Balloon'],['overlay','▣','Overlay']];
 TOOLS.forEach(([id,ic,lb])=>{ const b=mk('button',{id:'tab-'+id}); b.append(mk('b',{textContent:ic}),lb); b.onclick=()=>setTool(id); nav.append(b); });
-function setTool(t,keepSel){ if(document.body.classList.contains('notools')&&t!==tool) setTools(true); if(tool==='crop'&&t!=='crop'){ crop.on=false; crop.rect=null; } tool=t; if(t==='crop'){ crop.on=true; sel=null; } if((t==='draw'||t==='retouch'||t==='cut')&&!keepSel){ sel=null; } hideLoupe(); setHint(t==='cut'&&!cut.has?(cut.mode==='lasso'?'Trace around what you want to cut out':'Paint over what you want to cut out'):''); nav.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.id==='tab-'+t)); updateObjbar(); render(); showPanel(); }
+function setTool(t,keepSel){ if(document.body.classList.contains('notools')&&t!==tool) setTools(true); if(tool==='crop'&&t!=='crop'){ crop.on=false; crop.rect=null; } tool=t; if(t==='crop'){ crop.on=true; sel=null; } if((t==='draw'||t==='retouch'||t==='cut')&&!keepSel){ sel=null; } hideLoupe(); setHint(t==='cut'&&!cut.has?(cut.mode==='magic'?'Tap the thing you want':cut.mode==='lasso'?'Trace around what you want to cut out':'Paint over what you want to cut out'):''); if(t==='cut'&&cut.mode==='magic'&&magic.state==='idle') loadAI(); nav.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b.id==='tab-'+t)); updateObjbar(); render(); showPanel(); }
 function showPanel(){ panel.replaceChildren(); if(!orig) return; const P=panel; adjSnapped=false; funSliderSync=null;
   if(fun.on){ funPanel(P); return; }
   if(tool==='cut'){
-    const r0=mk('div',{className:'row'}); [['brush','Brush'],['erase','Eraser'],['lasso','Lasso']].forEach(([m,l])=>r0.append(chip(l,cut.mode===m,()=>{ cut.mode=m; if(!cut.has) setHint(m==='lasso'?'Trace around what you want to cut out':'Paint over what you want to cut out'); showPanel(); })));
+    const r0=mk('div',{className:'row'}); [['magic','✨ Magic'],['brush','Brush'],['erase','Eraser'],['lasso','Lasso']].forEach(([m,l])=>r0.append(chip(l,cut.mode===m,()=>{ cut.mode=m; if(m==='magic'&&magic.state==='idle') loadAI(); if(!cut.has) setHint(m==='magic'?'Tap the thing you want':m==='lasso'?'Trace around what you want to cut out':'Paint over what you want to cut out'); showPanel(); })));
     if(cut.undo.length) r0.append(chip('Undo stroke',false,()=>{ restoreSel(cut.undo.pop()); render(); showPanel(); }));
     r0.append(chip('Invert',false,invertSel)); if(cut.has) r0.append(chip('Clear',false,()=>{ pushSelUndo(); clearSel(); })); P.append(r0);
-    if(cut.mode!=='lasso') P.append(slider('Brush size',4,140,cut.size,v=>cut.size=v));
+    if(cut.mode==='magic'){ const rm=mk('div',{className:'row'}); magicChips(rm); P.append(rm); magicExtras(P); }
+    else if(cut.mode!=='lasso') P.append(slider('Brush size',4,140,cut.size,v=>cut.size=v));
     if(cut.has){ const go=mk('button',{className:'primary bigbtn',textContent:'Put it on another photo →'}); go.onclick=cutToNewPhoto; P.append(mk('div',{className:'row'},go));
       const r=mk('div',{className:'row'}); r.append(chip('Paste on this photo',false,()=>cutAction('paste')), chip('Cut & move here',false,()=>cutAction('cut')), chip('Save PNG',false,saveCutPng), chip('Copy',false,copyCutToClipboard), chip('Erase it',false,()=>cutAction('erase')), chip('Crop to shape',false,cropToShape), chip('Keep for later',false,()=>cutAction('copy'))); P.append(r); }
-    else P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Paint over what you want with your finger. Eraser cleans up edges. Pinch with two fingers to zoom in, and the brush gets finer as you zoom.'})));
+    else if(cut.mode!=='magic') P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Paint over what you want with your finger. Eraser cleans up edges. Pinch with two fingers to zoom in, and the brush gets finer as you zoom.'})));
     P.append(slider('Edge softness',0,20,cut.feather,v=>cut.feather=v), trayRow()); return; }
   if(tool==='adjust'){
     const g=mk('div',{className:'grid2'}); [['exposure','Exposure',-100,100],['contrast','Contrast',-100,100],['highlights','Highlights',-100,100],['shadows','Shadows',-100,100],['whites','Whites',-100,100],['blacks','Blacks',-100,100],['clarity','Clarity',-100,100],['sharpen','Sharpen',0,100],['blur','Blur',0,30,.5],['grain','Grain',0,100],['vignette','Vignette',0,100],['fade','Fade',0,100]].forEach(([k,l,a,b,s])=>g.append(adjSlider(k,l,a,b,s))); P.append(g);
