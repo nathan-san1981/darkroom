@@ -8,13 +8,14 @@ A phone-first photo editor in a single HTML file, built as a stand-in for PicSay
 
 Tap **Fun** in the header for a guided cut-and-paste flow:
 
-1. **Cut:** pick a photo, tap the thing you want with ✨ Magic (or paint it with the brush, or lasso it), tap Done.
+1. **Cut:** pick a photo, roughly paint over (or loop around) what you want with ✨ Magic brush, which snaps to the real edges when you lift your finger, then tap Done.
 2. **Place:** pick the photo to paste onto, or paste onto the same one. Saved cutouts stay in a tray.
 3. **Adjust:** drag to move; drag the blue corner knob around to spin it about its center, or in and out to resize (pinch works too). Sliders for size, rotation, see-through (to check placement), and brightness to match the new photo. Flip, outline, shadow, nudge arrows, duplicate, send back, change background, save.
 
 ## Cut out (main tool)
 
-- **✨ Magic:** tap an object and it selects just that object, using the SlimSAM segmentation model (Segment Anything) run on-device via transformers.js. The model, about 15 MB, downloads from jsDelivr and Hugging Face on first use, then the browser caches it. **+ Add** and **− Remove** taps refine the selection. If the model can't load, Magic falls back to a color-based smart select with a Color range slider.
+- **✨ Magic brush (default):** roughly paint over what you want, or just draw a loop around its outline. When you lift your finger it snaps the selection to the object's actual edges, using color models and contrast-aware smoothing (a light GrabCut) run on the device with no download. **+ Add** grows it; **− Remove** paints over wrong bits and re-snaps. The brush size sets how far it searches for the edge. **✨ Snap to edges** refines a selection made with any other tool.
+- **Tap select:** tap an object and it selects just that object, using the SlimSAM segmentation model (Segment Anything) run on-device via transformers.js. The model, about 15 MB, downloads from jsDelivr and Hugging Face on first use, then the browser caches it. **+ Add** and **− Remove** taps refine the selection. If the model can't load, Magic falls back to a color-based smart select with a Color range slider.
 - **Brush / Eraser:** shade over what you want with your finger; erase to clean up edges. Brush size stays constant on screen, so pinch-zooming gives a finer brush.
 - **Lasso:** trace around an area instead of painting it.
 - **Undo stroke, Invert, Clear**, and an edge-softness slider for feathered edges.
