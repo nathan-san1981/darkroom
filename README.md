@@ -6,7 +6,7 @@ A phone-first photo editor in a single HTML file, built as a stand-in for PicSay
 
 ## Fun mode
 
-Tap **Fun** in the header for a guided cut-and-paste flow:
+Switch between **Fun** and **Editor** in the header; the app reopens in whichever you used last. Fun is a guided cut-and-paste flow:
 
 1. **Cut:** pick a photo, roughly paint over (or loop around) what you want with ✨ Magic brush, which snaps to the real edges when you lift your finger, then tap Done.
 2. **Place:** pick the photo to paste onto, or paste onto the same one. Saved cutouts stay in a tray.
@@ -32,11 +32,10 @@ Tap **Fun** in the header for a guided cut-and-paste flow:
 | Crop | Free and fixed aspect crop, straighten, rotate, flip, resize |
 | Retouch | Heal, clone, blur, sharpen, dodge, burn, saturate, desaturate, red-eye |
 | Draw | Brush, marker, highlighter, eraser, arrows and shapes, pixelate/blur censor boxes |
-| Text | 10 fonts, outline, shadow, background box, alignment, opacity, blend modes |
-| Balloon | Speech, thought, shout and caption balloons with a draggable tail |
+| Text | 10 fonts, outline, shadow, background box, alignment, opacity, blend modes; speech, thought, shout and caption balloons with a draggable tail |
 | Overlay | Image stickers, watermark, frames |
 
-Also: layers panel, undo/redo, hold-to-compare, export as JPEG, PNG or WebP at a chosen size.
+Also: layers panel, undo/redo that covers selection strokes too, hold-to-compare, export as JPEG, PNG or WebP at a chosen size. Work autosaves in the browser, so if the page reloads (common on iPhone after switching apps) a **Continue editing** card restores the photo, cutouts, text and adjustments. On wide screens and in landscape the tools move to a side panel.
 
 ## Files
 
