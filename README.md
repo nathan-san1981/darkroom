@@ -2,7 +2,9 @@
 
 A phone-first photo editor in a single HTML file, built as a stand-in for PicSay on iPhone. Everything runs in the browser; photos never leave the device.
 
-**Use it:** https://nathan-san1981.github.io/darkroom/ — in Safari, tap Share → Add to Home Screen to run it full-screen like an app.
+**Use it:** https://nathan-san1981.github.io/darkroom/
+
+**Install on iPhone:** open that link in Safari → Share → **Add to Home Screen**. It then launches full-screen from its own icon, and works offline after the first visit (Magic tap-select still needs a connection the first time it downloads its model).
 
 ## Fun mode
 
@@ -11,6 +13,16 @@ Switch between **Fun** and **Editor** in the header; the app reopens in whicheve
 1. **Cut:** pick a photo, roughly paint over (or loop around) what you want with ✨ Magic brush, which snaps to the real edges when you lift your finger, then tap Done.
 2. **Place:** pick the photo to paste onto, or paste onto the same one. Saved cutouts stay in a tray.
 3. **Adjust:** drag to move; drag the blue corner knob around to spin it about its center, or in and out to resize (pinch works too). Sliders for size, rotation, see-through (to check placement), and brightness to match the new photo. Flip, outline, shadow, nudge arrows, duplicate, send back, change background, save.
+
+## Photo on top (layers)
+
+In **Overlay**, tap **+ Photo on top** and pick a second photo. It covers your current photo as its own layer. The **Finger** switch sets what dragging does:
+
+- **⌫ Erase** rubs parts of the top photo away so the photo underneath shows through, with brush size and softness controls. Pinch to zoom in for detail.
+- **↺ Restore** paints erased parts back.
+- **✥ Move** moves, spins and resizes the layer again; the erasing moves with it. Fill frame and Fit whole photo resize it in one tap.
+
+Erasing never changes the original layer, so **Undo all erasing** gets the full photo back. The same Erase and Restore work on cutouts and stickers, and in Fun mode.
 
 ## Cut out (main tool)
 
