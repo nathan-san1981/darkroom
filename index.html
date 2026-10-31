@@ -403,7 +403,7 @@ function drawObject(ctx,o,baseImg){
   if(o.type==='sticker'){ if(o.flip) ctx.scale(-1,1); if(FILTER_OK&&((o.bright&&o.bright!==1)||(o.sat&&o.sat!==1))) ctx.filter=`brightness(${o.bright||1}) saturate(${o.sat||1})`; if(o.shadow){ const m=Math.max(o.w,o.h); ctx.shadowColor='rgba(0,0,0,.55)'; ctx.shadowBlur=m*.05; ctx.shadowOffsetY=m*.025; }
     const src=stickerSrc(o); if(o.outline){ const im=outlined(o), pw=o.w*im.width/src.width, ph=o.h*im.height/src.height; ctx.drawImage(im,-pw/2,-ph/2,pw,ph); } else ctx.drawImage(src,-o.w/2,-o.h/2,o.w,o.h); }
   else if(o.type==='shape'){ ctx.strokeStyle=o.color; ctx.fillStyle=o.color; ctx.lineWidth=o.width; ctx.lineCap='round'; ctx.lineJoin='round'; const hw=o.w/2, hh=o.h/2;
-    if(o.kind==='rect'){ if(o.fill) ctx.fillRect(-hw,-hh,o.w,o.h); else ctx.strokeRect(-hw,-hh,o.w,o.h); }
+    if(o.kind==='rect'){ if(o.round){ const rr=Math.min(Math.abs(o.w),Math.abs(o.h))*.18; ctx.beginPath(); ctx.roundRect(Math.min(-hw,hw),Math.min(-hh,hh),Math.abs(o.w),Math.abs(o.h),rr); o.fill?ctx.fill():ctx.stroke(); } else if(o.fill) ctx.fillRect(-hw,-hh,o.w,o.h); else ctx.strokeRect(-hw,-hh,o.w,o.h); }
     else if(o.kind==='ellipse'){ ctx.beginPath(); ctx.ellipse(0,0,Math.abs(hw),Math.abs(hh),0,0,Math.PI*2); o.fill?ctx.fill():ctx.stroke(); }
     else { ctx.beginPath(); ctx.moveTo(-hw,-hh); ctx.lineTo(hw,hh); ctx.stroke(); if(o.kind==='arrow'){ const an=Math.atan2(o.h,o.w), L=o.width*3.2; ctx.beginPath(); ctx.moveTo(hw,hh); ctx.lineTo(hw-L*Math.cos(an-.5),hh-L*Math.sin(an-.5)); ctx.lineTo(hw-L*Math.cos(an+.5),hh-L*Math.sin(an+.5)); ctx.closePath(); ctx.fill(); } } }
   else if(o.type==='text'){ ctx.font=fontStr(o); ctx.textAlign=o.align||'center'; ctx.textBaseline='middle'; const lines=(o.upper?o.text.toUpperCase():o.text).split('\n'), lh=o.fontSize*1.15; const widths=lines.map(l=>ctx.measureText(l).width), mw=Math.max(...widths);
@@ -705,6 +705,7 @@ view.addEventListener('pointerdown',e=>{
   if(!orig||compare) return; view.setPointerCapture(e.pointerId); const p=toImg(e); ptrs.set(e.pointerId,p); cptr.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(ptrs.size===2 && sel && !['draw','retouch'].includes(tool) && !crop.on && !(tool==='overlay'&&layerBrush.mode!=='move')){ const [a,b]=[...ptrs.values()]; gesture={kind:'pinch',d0:Math.hypot(b.x-a.x,b.y-a.y),a0:Math.atan2(b.y-a.y,b.x-a.x),s0:sel.scale||1,r0:sel.rot||0,cx:sel.x,cy:sel.y,mx:(a.x+b.x)/2,my:(a.y+b.y)/2,w0:sel.w,h0:sel.h}; return; }
   if(ptrs.size===2){ startVZoom(); return; }
+  if(pickingColor&&ptrs.size===1){ const c=sampleColor(e); pickingColor=false; ptrs.delete(e.pointerId); cptr.delete(e.pointerId); if(c){ setPaintColor(c); toast('Color picked'); } setHint(''); showPanel(); return; }
   if(ptrs.size>2) return;
   if(tool==='cut'&&cut.mode==='magic'){ gesture={kind:'magictap',c0:{x:e.clientX,y:e.clientY},p}; return; }
   if(tool==='cut'){ ensureMask(); if(cut.mode==='magicbrush'){ pushSelUndo(); gesture={kind:'magicstroke',last:p}; cut.cursor={p}; paintRough(p,p); } else if(cut.mode==='lasso'){ cut.path=[p]; gesture={kind:'lasso'}; } else { pushSelUndo(); gesture={kind:'cutbrush',last:p}; cut.cursor={p}; selStroke(p,p); } setHint(''); render(); drawLoupe(p,e); return; }
@@ -720,7 +721,7 @@ view.addEventListener('pointerdown',e=>{
   if(sel&&sel.type==='balloon'){ const t=tailTip(sel); if(Math.hypot(t.x-p.x,t.y-p.y)<18/fit){ snapshot('objects'); gesture={kind:'tail'}; return; } }
   if(sel&&(sel.type==='censor'||sel.type==='shape')){ const hp=handlePos(sel); if(Math.hypot(hp.x-p.x,hp.y-p.y)<18/fit){ snapshot('objects'); gesture={kind:'resize',p0:p,w0:sel.w,h0:sel.h,x0:sel.x,y0:sel.y}; return; } }
   const h=hit(p.x,p.y); if(h!==sel){ sel=h; updateObjbar(); render(); showPanel(); }
-  if(h&&fun.on){ snapshot('objects'); gesture={kind:'drag',ox:h.x-p.x,oy:h.y-p.y}; const want=(h.type==='text'||h.type==='balloon')?'text':'adjust'; if(fun.step!==want){ fun.step=want; if(want==='text'){ funWrite=false; setTool('text',true); } else setTool('overlay',true); renderFunbar(); showPanel(); } return; }
+  if(h&&fun.on){ snapshot('objects'); gesture={kind:'drag',ox:h.x-p.x,oy:h.y-p.y}; const want=(h.type==='text'||h.type==='balloon'||h.type==='shape'||h.type==='censor')?'text':'adjust'; if(fun.step!==want){ fun.step=want; if(want==='text'){ funWrite=false; setTool('text',true); } else setTool('overlay',true); renderFunbar(); showPanel(); } return; }
   if(h){ snapshot('objects'); gesture={kind:'drag',ox:h.x-p.x,oy:h.y-p.y}; if(h.type==='text'&&tool!=='text') setTool('text',true); if(h.type==='balloon'&&tool!=='text') setTool('text',true); if(h.type==='sticker'&&tool!=='overlay') setTool('overlay',true); if((h.type==='shape'||h.type==='censor')&&tool!=='draw'){ draw.mode=h.type==='shape'?'shape':'censor'; setTool('draw',true); } }
 });
 view.addEventListener('pointermove',e=>{
@@ -734,7 +735,7 @@ view.addEventListener('pointermove',e=>{
   if(g.kind==='cropnew'){ crop.rect=normRect(g.p0,p); if(crop.aspect) fixAspect(crop.rect,g.p0,p); render(); return; }
   if(g.kind==='cropmove'){ const c=crop.rect; c.x=clamp(p.x+g.ox,0,orig.width-c.w); c.y=clamp(p.y+g.oy,0,orig.height-c.h); render(); return; }
   if(g.kind==='cropcorner'){ const s=g.start, k=g.k; let x1=s.x,y1=s.y,x2=s.x+s.w,y2=s.y+s.h; if(k.includes('l'))x1=p.x; if(k.includes('r'))x2=p.x; if(k.includes('t'))y1=p.y; if(k.includes('b'))y2=p.y; crop.rect=normRect({x:x1,y:y1},{x:x2,y:y2}); if(crop.aspect){ const anchor={x:k.includes('l')?x2:x1,y:k.includes('t')?y2:y1}; fixAspect(crop.rect,anchor,p); } render(); return; }
-  if(g.kind==='shapenew'||g.kind==='censornew'){ const dx=p.x-g.p0.x, dy=p.y-g.p0.y; if(!g.obj){ if(Math.hypot(dx,dy)<4/fit) return; snapshot('objects'); g.obj = g.kind==='shapenew' ? {id:uid(),type:'shape',kind:shapeOpt.kind,color:shapeOpt.color,width:shapeOpt.width*imgScale(),fill:shapeOpt.fill,x:0,y:0,w:0,h:0,rot:0,scale:1,opacity:1,blend:'source-over'} : {id:uid(),type:'censor',mode:draw.censor||'pixelate',cells:draw.censorCells||14,x:0,y:0,w:0,h:0,rot:0,scale:1,opacity:1,blend:'source-over'}; objects.push(g.obj); sel=g.obj; }
+  if(g.kind==='shapenew'||g.kind==='censornew'){ const dx=p.x-g.p0.x, dy=p.y-g.p0.y; if(!g.obj){ if(Math.hypot(dx,dy)<4/fit) return; snapshot('objects'); g.obj = g.kind==='shapenew' ? {id:uid(),type:'shape',kind:shapeOpt.kind,color:shapeOpt.color,width:shapeOpt.width*imgScale(),fill:shapeOpt.fill,round:!!shapeOpt.round,x:0,y:0,w:0,h:0,rot:0,scale:1,opacity:1,blend:'source-over'} : {id:uid(),type:'censor',mode:draw.censor||'pixelate',cells:draw.censorCells||14,x:0,y:0,w:0,h:0,rot:0,scale:1,opacity:1,blend:'source-over'}; objects.push(g.obj); sel=g.obj; }
     const o=g.obj; if(o.type==='shape'&&(o.kind==='line'||o.kind==='arrow')){ o.x=g.p0.x+dx/2; o.y=g.p0.y+dy/2; o.w=dx; o.h=dy; } else { const r=normRect(g.p0,p); o.x=r.x+r.w/2; o.y=r.y+r.h/2; o.w=r.w; o.h=r.h; } render(); return; }
   if(g.kind==='resize'){ const dx=p.x-g.p0.x, dy=p.y-g.p0.y; sel.w=Math.max(10,g.w0+dx*(sel.type==='censor'?2:2)); sel.h=Math.max(10,g.h0+dy*2); if(sel.type==='censor'){ sel.x=g.x0+dx; sel.y=g.y0+dy; } render(); return; }
   if(g.kind==='knob'){ let r=g.r0+Math.atan2(p.y-sel.y,p.x-sel.x)-g.a0; const deg=r*180/Math.PI, snap=Math.round(deg/90)*90; if(Math.abs(deg-snap)<3) r=snap*Math.PI/180; sel.rot=r; sel.scale=Math.max(.05,g.s0*Math.hypot(p.x-sel.x,p.y-sel.y)/g.d0); render(); syncFunSliders(); return; }
@@ -818,7 +819,7 @@ function cutModeOptions(P){
 const fun={on:false,step:'cut'};
 const FUN_STEPS=[['cut','Cut'],['place','Place'],['adjust','Adjust'],['text','Text']];
 let funWrite=false;
-function funStep(st){ fun.step=st; funWrite=false; if(st==='cut'){ setTool('cut'); setHint(cut.has?'':modeHint()); } else if(st==='text'){ sel=sel&&(sel.type==='text'||sel.type==='balloon')?sel:null; setTool('text',true); } else { sel=sel&&sel.type==='sticker'?sel:null; setTool('overlay',true); } updateObjbar(); renderFunbar(); showPanel(); }
+function funStep(st){ fun.step=st; funWrite=false; pickingColor=false; if(st==='cut'){ setTool('cut'); setHint(cut.has?'':modeHint()); } else if(st==='text'){ sel=sel&&(sel.type==='text'||sel.type==='balloon')?sel:null; setTool('text',true); } else { sel=sel&&sel.type==='sticker'?sel:null; setTool('overlay',true); } updateObjbar(); renderFunbar(); showPanel(); }
 function renderFunbar(){ const bar=$('#funbar'); bar.replaceChildren(); const idx=FUN_STEPS.findIndex(x=>x[0]===fun.step);
   FUN_STEPS.forEach(([k,l],i)=>{ const b=mk('button',{className:'step'+(k===fun.step?' on':i<idx?' done':'')}); b.append(mk('b',{textContent:i<idx?'✓':String(i+1)}),l); b.onclick=()=>{ if(k==='adjust'&&!objects.some(o=>o.type==='sticker')){ toast('Place a cutout first'); return; } funStep(k); }; bar.append(b); });
 }
@@ -846,9 +847,8 @@ function addFunBalloon(style){ const k=imgScale(); addObject({type:'balloon',sty
 function focusTextInput(){ const i=panel.querySelector('input[type=text]'); if(i){ try{ i.focus(); i.select(); }catch(_){ } } }
 function funTextPanel(P){
   const r=mk('div',{className:'row'}); r.append(chip('+ Text',true,addFunText), chip('💬 Speech',false,()=>addFunBalloon('speech')), chip('💭 Thought',false,()=>addFunBalloon('thought')), chip('💥 Shout',false,()=>addFunBalloon('shout')), chip('▭ Caption',false,()=>addFunBalloon('box')),
-    chip('✎ Write with finger',funWrite,()=>{ funWrite=!funWrite; if(funWrite){ sel=null; draw.mode='brush'; setTool('draw'); setHint('Write or draw with your finger'); } else { setTool('text',true); setHint(''); } updateObjbar(); render(); showPanel(); })); P.append(r);
-  if(funWrite){ P.append(slider('Pen size',1,60,draw.size,v=>draw.size=v)); const sw=swatches(draw.color,c=>draw.color=c); sw.prepend(mk('span',{className:'lbl',textContent:'Pen'})); P.append(sw);
-    P.append(mk('div',{className:'row'},chip('Eraser',draw.mode==='erase',()=>{ draw.mode=draw.mode==='erase'?'brush':'erase'; showPanel(); }), chip('Clear writing',false,()=>{ snapshot('doodle'); doodle.getContext('2d').clearRect(0,0,doodle.width,doodle.height); render(); }), mk('span',{className:'note',textContent:'↶ undoes the last stroke.'}))); return; }
+    chip('✎ Write',funWrite==='write',()=>setFunDraw('write')), chip('🖌 Paint over',funWrite==='paint',()=>setFunDraw('paint')), chip('▬ Cover box',funWrite==='box',()=>setFunDraw('box'))); P.append(r);
+  if(funWrite){ funDrawPanel(P); return; }
   const o=sel&&(sel.type==='text'||sel.type==='balloon')?sel:null;
   if(!o){ P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Add text or a speech bubble, then type. Drag it into place; the blue corner knob spins and resizes it. Tap any text on the photo to change it.'}))); return; }
   const i=mk('input',{type:'text',value:o.text,id:'funTextInput',placeholder:'Type here'}); let sn=false; i.oninput=()=>{ if(!sn){ snapshot('objects'); sn=true; } o.text=i.value; if(o.type==='text') fitText(o); render(); };
@@ -867,6 +867,37 @@ function funTextPanel(P){
   }
   P.append(slider('See-through',0,90,Math.round((1-(o.opacity??1))*100),v=>{ o.opacity=1-v/100; render(); },1,v=>v+'%'));
   P.append(mk('div',{className:'row'},chip('Straighten',false,()=>{ snapshot('objects'); o.rot=0; render(); }), chip('Duplicate',false,()=>$('#dupObj').click()), chip('Delete',false,()=>$('#delObj').click())));
+}
+
+// ---- Fun mode drawing: write, paint over, cover box, color picker ----
+const penState={color:'#ff3b3b',size:8}, paintState={color:'#ffffff',size:60};
+let pickingColor=false;
+function setFunDraw(m){ funWrite=(funWrite===m)?false:m; pickingColor=false;
+  if(funWrite){ sel=null; const st=funWrite==='write'?penState:paintState; draw.color=st.color; draw.size=st.size; draw.opacity=1;
+    if(funWrite==='box'){ draw.mode='shape'; shapeOpt.kind='rect'; shapeOpt.fill=true; shapeOpt.color=paintState.color; }
+    else draw.mode='brush';
+    setTool('draw'); setHint(funWrite==='write'?'Write or draw with your finger':funWrite==='paint'?'Paint over anything you want to hide':'Drag a box over what you want to cover'); }
+  else { setTool('text',true); setHint(''); }
+  updateObjbar(); render(); showPanel(); }
+function setPaintColor(c){ paintState.color=c; if(funWrite==='paint') draw.color=c; if(funWrite==='box'){ shapeOpt.color=c; if(sel&&sel.type==='shape'){ snapshot('objects'); sel.color=c; render(); } } }
+function sampleColor(e){ const r=view.getBoundingClientRect(); const x=Math.round((e.clientX-r.left)/r.width*view.width), y=Math.round((e.clientY-r.top)/r.height*view.height);
+  const R=3, x0=Math.max(0,x-R), y0=Math.max(0,y-R), w=Math.min(view.width,x+R+1)-x0, h=Math.min(view.height,y+R+1)-y0; if(w<1||h<1) return null;
+  const d=vctx.getImageData(x0,y0,w,h).data; let rr=0,gg=0,bb=0,n=0; for(let i=0;i<d.length;i+=4){ rr+=d[i]; gg+=d[i+1]; bb+=d[i+2]; n++; }
+  const hx=v=>Math.round(v/n).toString(16).padStart(2,'0'); return '#'+hx(rr)+hx(gg)+hx(bb); }
+function funDrawPanel(P){
+  if(funWrite==='write'){ P.append(slider('Pen size',1,60,penState.size,v=>{ penState.size=v; draw.size=v; }));
+    const sw=swatches(penState.color,c=>{ penState.color=c; draw.color=c; }); sw.prepend(mk('span',{className:'lbl',textContent:'Pen'})); P.append(sw);
+    P.append(mk('div',{className:'row'},chip('Eraser',draw.mode==='erase',()=>{ draw.mode=draw.mode==='erase'?'brush':'erase'; showPanel(); }), chip('Clear drawing',false,()=>{ snapshot('doodle'); doodle.getContext('2d').clearRect(0,0,doodle.width,doodle.height); render(); }), mk('span',{className:'note',textContent:'↶ undoes the last stroke.'}))); return; }
+  // paint + box share one color
+  const pr=mk('div',{className:'row'}); const sw0=mk('button',{className:'sw on',title:paintState.color}); sw0.style.background=paintState.color;
+  pr.append(mk('span',{className:'lbl',textContent:'Color'}), sw0, chip(pickingColor?'Tap the photo…':'💧 Pick color from photo',pickingColor,()=>{ pickingColor=!pickingColor; setHint(pickingColor?'Tap the photo next to what you\'re covering to match its color':''); showPanel(); })); P.append(pr);
+  P.append(swatches(paintState.color,c=>setPaintColor(c)));
+  if(funWrite==='paint'){ P.append(slider('Brush size',10,250,paintState.size,v=>{ paintState.size=v; draw.size=v; }));
+    P.append(mk('div',{className:'row'},chip('Eraser',draw.mode==='erase',()=>{ draw.mode=draw.mode==='erase'?'brush':'erase'; showPanel(); }), chip('Clear paint',false,()=>{ snapshot('doodle'); doodle.getContext('2d').clearRect(0,0,doodle.width,doodle.height); render(); }), mk('span',{className:'note',textContent:'Paint goes under your text and cutouts. Then tap + Text.'}))); }
+  else { const r=mk('div',{className:'row'}); r.append(chip('Square corners',shapeOpt.round!==true,()=>{ shapeOpt.round=false; if(sel&&sel.type==='shape'){ sel.round=false; render(); } showPanel(); }), chip('Rounded',shapeOpt.round===true,()=>{ shapeOpt.round=true; if(sel&&sel.type==='shape'){ sel.round=true; render(); } showPanel(); }));
+    if(sel&&sel.type==='shape') r.append(chip('Delete box',false,()=>$('#delObj').click())); P.append(r);
+    P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Drag across the photo to make a box. Drag a box to move it; drag its corner dot to resize. Then tap + Text.'}))); }
+  P.append(mk('div',{className:'row'},chip('Done → back to text',true,()=>setFunDraw(funWrite))));
 }
 let funSliderSync=null; function syncFunSliders(){ if(funSliderSync) funSliderSync(); }
 function funPanel(P){

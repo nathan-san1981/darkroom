@@ -13,7 +13,7 @@ The app opens in **Fun**, a guided cut-and-paste flow; switch to **Editor** in t
 1. **Cut:** pick a photo, roughly paint over (or loop around) what you want with ✨ Magic brush, which snaps to the real edges when you lift your finger, then tap Done.
 2. **Place:** pick the photo to paste onto, or paste onto the same one. Saved cutouts stay in a tray.
 3. **Adjust:** drag to move; drag the blue corner knob around to spin it about its center, or in and out to resize (pinch works too). Sliders for size, rotation, see-through (to check placement), and brightness to match the new photo. Flip, outline, shadow, nudge arrows, duplicate, send back, change background, save.
-4. **Text:** + Text with one-tap styles (Meme, Bold, Marker, Script, Handwritten, Neon, Label, Headline, Typewriter), color, outline, shadow, glow, box, all caps and alignment; captions shrink to fit the photo. Speech, thought, shout and caption bubbles with an aimable tail. **Write with finger** for handwriting or doodles. Text uses the same blue knob to spin and resize. Tapping any text or cutout on the photo jumps to its step.
+4. **Text:** + Text with one-tap styles (Meme, Bold, Marker, Script, Handwritten, Neon, Label, Headline, Typewriter), color, outline, shadow, glow, box, all caps and alignment; captions shrink to fit the photo. Speech, thought, shout and caption bubbles with an aimable tail. **✎ Write** for handwriting or doodles; **🖌 Paint over** (big brush) and **▬ Cover box** (drag a solid box, square or rounded) to hide things before writing on top, with **💧 Pick color from photo** to match the paint to the background. Text uses the same blue knob to spin and resize. Tapping any text or cutout on the photo jumps to its step.
 
 ## Photo on top (layers)
 
