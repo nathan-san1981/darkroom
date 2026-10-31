@@ -406,13 +406,13 @@ function drawObject(ctx,o,baseImg){
     if(o.kind==='rect'){ if(o.fill) ctx.fillRect(-hw,-hh,o.w,o.h); else ctx.strokeRect(-hw,-hh,o.w,o.h); }
     else if(o.kind==='ellipse'){ ctx.beginPath(); ctx.ellipse(0,0,Math.abs(hw),Math.abs(hh),0,0,Math.PI*2); o.fill?ctx.fill():ctx.stroke(); }
     else { ctx.beginPath(); ctx.moveTo(-hw,-hh); ctx.lineTo(hw,hh); ctx.stroke(); if(o.kind==='arrow'){ const an=Math.atan2(o.h,o.w), L=o.width*3.2; ctx.beginPath(); ctx.moveTo(hw,hh); ctx.lineTo(hw-L*Math.cos(an-.5),hh-L*Math.sin(an-.5)); ctx.lineTo(hw-L*Math.cos(an+.5),hh-L*Math.sin(an+.5)); ctx.closePath(); ctx.fill(); } } }
-  else if(o.type==='text'){ ctx.font=fontStr(o); ctx.textAlign=o.align||'center'; ctx.textBaseline='middle'; const lines=o.text.split('\n'), lh=o.fontSize*1.15; const widths=lines.map(l=>ctx.measureText(l).width), mw=Math.max(...widths);
+  else if(o.type==='text'){ ctx.font=fontStr(o); ctx.textAlign=o.align||'center'; ctx.textBaseline='middle'; const lines=(o.upper?o.text.toUpperCase():o.text).split('\n'), lh=o.fontSize*1.15; const widths=lines.map(l=>ctx.measureText(l).width), mw=Math.max(...widths);
     const ox=o.align==='left'?-mw/2:o.align==='right'?mw/2:0;
-    if(o.bg){ ctx.fillStyle=o.bg; const p=o.fontSize*.35; ctx.fillRect(-mw/2-p,-lines.length*lh/2-p*.6,mw+p*2,lines.length*lh+p*1.2); }
+    if(o.bg){ ctx.fillStyle=o.bg; const p=o.fontSize*.35; ctx.beginPath(); ctx.roundRect(-mw/2-p,-lines.length*lh/2-p*.6,mw+p*2,lines.length*lh+p*1.2,o.fontSize*.22); ctx.fill(); }
     lines.forEach((l,i)=>{ const y=(i-(lines.length-1)/2)*lh;
       if(o.shadow){ ctx.shadowColor='rgba(0,0,0,.65)'; ctx.shadowBlur=o.fontSize*.18; ctx.shadowOffsetY=o.fontSize*.06; }
       if(o.outline){ ctx.lineJoin='round'; ctx.lineWidth=o.fontSize*.14; ctx.strokeStyle=o.outline; ctx.strokeText(l,ox,y); }
-      ctx.shadowColor='transparent'; ctx.fillStyle=o.color; ctx.fillText(l,ox,y); }); }
+      ctx.shadowColor='transparent'; if(o.glow){ ctx.save(); ctx.shadowColor=o.glow; ctx.shadowBlur=o.fontSize*.45; ctx.fillStyle=o.glow; ctx.fillText(l,ox,y); ctx.shadowBlur=o.fontSize*.2; ctx.fillText(l,ox,y); ctx.restore(); } ctx.fillStyle=o.color; ctx.fillText(l,ox,y); }); }
   else if(o.type==='balloon'){ const m=balloonMetrics(ctx,o), w=m.w, h=m.h; ctx.lineWidth=Math.max(1.5,o.fontSize*.09); ctx.strokeStyle=o.stroke; ctx.fillStyle=o.fill; ctx.lineJoin='round';
     const tx=Math.cos(o.tailA)*(h*.5+o.fontSize*2.2*o.tailL), ty=Math.sin(o.tailA)*(h*.5+o.fontSize*2.2*o.tailL);
     if(o.style==='thought'){ ctx.beginPath(); ctx.ellipse(0,0,w/2,h/2,0,0,Math.PI*2); ctx.fill(); ctx.stroke(); for(let i=1;i<=3;i++){ const t=i/3.6, r=o.fontSize*(.55-.13*i); ctx.beginPath(); ctx.arc(tx*t*.95,ty*t*.95,r,0,Math.PI*2); ctx.fill(); ctx.stroke(); } }
@@ -426,12 +426,12 @@ function outlined(o){ const im=stickerSrc(o), key=o.outline, hit0=outlineCache.g
   const sil=cvs(iw,ih), sg=sil.getContext('2d'); sg.drawImage(im,0,0); sg.globalCompositeOperation='source-in'; sg.fillStyle=key; sg.fillRect(0,0,iw,ih);
   const c=cvs(iw+r*2,ih+r*2), g=c.getContext('2d'); for(let a=0;a<24;a++){ const t=a/24*Math.PI*2; g.drawImage(sil,r+Math.cos(t)*r,r+Math.sin(t)*r); } g.drawImage(im,r,r); outlineCache.set(im,{key,c}); return c; }
 function objBox(ctx,o){ if(o.type==='sticker'||o.type==='censor') return {w:o.w,h:o.h}; if(o.type==='shape') return {w:Math.abs(o.w)+o.width*2,h:Math.abs(o.h)+o.width*2};
-  if(o.type==='text'){ ctx.font=fontStr(o); const ls=o.text.split('\n'); return {w:Math.max(...ls.map(l=>ctx.measureText(l).width))+o.fontSize*.5,h:ls.length*o.fontSize*1.15+o.fontSize*.3}; }
+  if(o.type==='text'){ ctx.font=fontStr(o); const ls=(o.upper?o.text.toUpperCase():o.text).split('\n'); return {w:Math.max(...ls.map(l=>ctx.measureText(l).width))+o.fontSize*.5,h:ls.length*o.fontSize*1.15+o.fontSize*.3}; }
   const m=balloonMetrics(ctx,o); return {w:m.w*(o.style==='shout'?1.3:1),h:m.h*(o.style==='shout'?1.4:1)}; }
 function tailTip(o){ const m=balloonMetrics(vctx,o); const d=m.h*.5+o.fontSize*2.2*o.tailL; const c=Math.cos(o.rot), s=Math.sin(o.rot), lx=Math.cos(o.tailA)*d*o.scale, ly=Math.sin(o.tailA)*d*o.scale; return {x:o.x+lx*c-ly*s,y:o.y+lx*s+ly*c}; }
 function drawSelection(ctx,o){ const b=objBox(ctx,o); ctx.save(); ctx.translate(o.x,o.y); ctx.rotate(o.rot||0); ctx.scale(o.scale||1,o.scale||1); const sc=1/fit/(o.scale||1); ctx.setLineDash([6*sc,5*sc]); ctx.lineWidth=1.5*sc; ctx.strokeStyle='#58c4ff'; ctx.strokeRect(-b.w/2,-b.h/2,b.w,b.h); ctx.restore();
   if(o.type==='balloon'){ const t=tailTip(o); ctx.fillStyle='#58c4ff'; ctx.strokeStyle='#fff'; ctx.lineWidth=2/fit; ctx.beginPath(); ctx.arc(t.x,t.y,9/fit,0,Math.PI*2); ctx.fill(); ctx.stroke(); }
-  if(o.type==='sticker'&&!(tool==='overlay'&&layerBrush.mode!=='move')){ const h=stickerHandles(o).knob, u=1/(fit*vz.s); ctx.save(); ctx.fillStyle='#58c4ff'; ctx.strokeStyle='#fff'; ctx.lineWidth=2.5*u; ctx.beginPath(); ctx.arc(h.x,h.y,15*u,0,Math.PI*2); ctx.fill(); ctx.stroke();
+  if((o.type==='sticker'||o.type==='text'||o.type==='balloon')&&!(tool==='overlay'&&layerBrush.mode!=='move')){ const h=stickerHandles(o).knob, u=1/(fit*vz.s); ctx.save(); ctx.fillStyle='#58c4ff'; ctx.strokeStyle='#fff'; ctx.lineWidth=2.5*u; ctx.beginPath(); ctx.arc(h.x,h.y,15*u,0,Math.PI*2); ctx.fill(); ctx.stroke();
     ctx.fillStyle='#fff'; ctx.font=`bold ${15*u}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('⟳',h.x,h.y+1*u); ctx.restore(); }
   if(o.type==='censor'||o.type==='shape'){ const h=handlePos(o); ctx.fillStyle='#58c4ff'; ctx.strokeStyle='#fff'; ctx.lineWidth=2/fit; ctx.beginPath(); ctx.arc(h.x,h.y,9/fit,0,Math.PI*2); ctx.fill(); ctx.stroke(); } }
 function localToWorld(o,lx,ly){ const c=Math.cos(o.rot||0), s=Math.sin(o.rot||0), sc=o.scale||1; return {x:o.x+(lx*c-ly*s)*sc, y:o.y+(lx*s+ly*c)*sc}; }
@@ -716,10 +716,11 @@ view.addEventListener('pointerdown',e=>{
   if(tool==='draw'){ snapshot('doodle'); gesture={kind:'doodle',last:p}; dab(p,p); render(); return; }
   if(tool==='retouch'){ if(ret.mode==='clone'&&(!ret.cloneSrc||e.altKey)){ ret.cloneSrc=p; ret.cloneOff=null; render(); setHint('Source set. Now paint where it should go.'); return; } if(ret.mode==='redeye'){ snapshot('orig'); redEye(p); refreshPreview(); render(); return; } snapshot('orig'); if(ret.mode==='clone'&&!ret.cloneOff) ret.cloneOff={x:ret.cloneSrc.x-p.x,y:ret.cloneSrc.y-p.y}; gesture={kind:'retouch',last:p,src:cloneCanvas(orig)}; retouchDab(p,p,gesture.src); refreshPreview(); render(); return; }
   if(tool==='overlay'&&sel&&sel.type==='sticker'&&layerBrush.mode!=='move'){ startLayerStroke(sel,p); gesture={kind:'layererase',last:p}; render(); return; }
-  if(sel&&sel.type==='sticker'){ const h=stickerHandles(sel).knob, R=30/(fit*vz.s); if(Math.hypot(h.x-p.x,h.y-p.y)<R){ snapshot('objects'); gesture={kind:'knob',a0:Math.atan2(p.y-sel.y,p.x-sel.x),r0:sel.rot||0,d0:Math.max(1,Math.hypot(p.x-sel.x,p.y-sel.y)),s0:sel.scale||1}; return; } }
+  if(sel&&(sel.type==='sticker'||sel.type==='text'||sel.type==='balloon')){ const h=stickerHandles(sel).knob, R=30/(fit*vz.s); if(Math.hypot(h.x-p.x,h.y-p.y)<R){ snapshot('objects'); gesture={kind:'knob',a0:Math.atan2(p.y-sel.y,p.x-sel.x),r0:sel.rot||0,d0:Math.max(1,Math.hypot(p.x-sel.x,p.y-sel.y)),s0:sel.scale||1}; return; } }
   if(sel&&sel.type==='balloon'){ const t=tailTip(sel); if(Math.hypot(t.x-p.x,t.y-p.y)<18/fit){ snapshot('objects'); gesture={kind:'tail'}; return; } }
   if(sel&&(sel.type==='censor'||sel.type==='shape')){ const hp=handlePos(sel); if(Math.hypot(hp.x-p.x,hp.y-p.y)<18/fit){ snapshot('objects'); gesture={kind:'resize',p0:p,w0:sel.w,h0:sel.h,x0:sel.x,y0:sel.y}; return; } }
   const h=hit(p.x,p.y); if(h!==sel){ sel=h; updateObjbar(); render(); showPanel(); }
+  if(h&&fun.on){ snapshot('objects'); gesture={kind:'drag',ox:h.x-p.x,oy:h.y-p.y}; const want=(h.type==='text'||h.type==='balloon')?'text':'adjust'; if(fun.step!==want){ fun.step=want; if(want==='text'){ funWrite=false; setTool('text',true); } else setTool('overlay',true); renderFunbar(); showPanel(); } return; }
   if(h){ snapshot('objects'); gesture={kind:'drag',ox:h.x-p.x,oy:h.y-p.y}; if(h.type==='text'&&tool!=='text') setTool('text',true); if(h.type==='balloon'&&tool!=='text') setTool('text',true); if(h.type==='sticker'&&tool!=='overlay') setTool('overlay',true); if((h.type==='shape'||h.type==='censor')&&tool!=='draw'){ draw.mode=h.type==='shape'?'shape':'censor'; setTool('draw',true); } }
 });
 view.addEventListener('pointermove',e=>{
@@ -815,17 +816,58 @@ function cutModeOptions(P){
   if(cut.mode!=='lasso') P.append(slider('Brush size',4,140,cut.size,v=>cut.size=v)); }
 // =============== fun mode ===============
 const fun={on:false,step:'cut'};
-const FUN_STEPS=[['cut','Cut'],['place','Place'],['adjust','Adjust']];
-function funStep(st){ fun.step=st; if(st==='cut'){ setTool('cut'); setHint(cut.has?'':modeHint()); } else { sel=sel&&sel.type==='sticker'?sel:null; setTool('overlay',true); } renderFunbar(); showPanel(); }
+const FUN_STEPS=[['cut','Cut'],['place','Place'],['adjust','Adjust'],['text','Text']];
+let funWrite=false;
+function funStep(st){ fun.step=st; funWrite=false; if(st==='cut'){ setTool('cut'); setHint(cut.has?'':modeHint()); } else if(st==='text'){ sel=sel&&(sel.type==='text'||sel.type==='balloon')?sel:null; setTool('text',true); } else { sel=sel&&sel.type==='sticker'?sel:null; setTool('overlay',true); } updateObjbar(); renderFunbar(); showPanel(); }
 function renderFunbar(){ const bar=$('#funbar'); bar.replaceChildren(); const idx=FUN_STEPS.findIndex(x=>x[0]===fun.step);
   FUN_STEPS.forEach(([k,l],i)=>{ const b=mk('button',{className:'step'+(k===fun.step?' on':i<idx?' done':'')}); b.append(mk('b',{textContent:i<idx?'✓':String(i+1)}),l); b.onclick=()=>{ if(k==='adjust'&&!objects.some(o=>o.type==='sticker')){ toast('Place a cutout first'); return; } funStep(k); }; bar.append(b); });
-  const x=mk('button',{textContent:'Full editor'}); x.onclick=toggleFun; bar.append(x); }
-function toggleFun(){ fun.on=!fun.on; document.body.classList.toggle('fun',fun.on); $('#funBtn').classList.toggle('on',fun.on); $('#edBtn').classList.toggle('on',!fun.on); try{ localStorage.setItem('darkroom-mode',fun.on?'fun':'editor'); }catch(_){} updateObjbar();
+}
+function toggleFun(){ fun.on=!fun.on; document.body.classList.toggle('fun',fun.on); $('#funBtn').classList.toggle('on',fun.on); $('#edBtn').classList.toggle('on',!fun.on); try{ localStorage.setItem('darkroom-mode2',fun.on?'fun':'editor'); }catch(_){} updateObjbar();
   if(fun.on){ if(!orig){ openPicker('Pick the photo to cut from','Choose any photo. You will paint over the part you want.',()=>funStep('cut')); renderFunbar(); } else funStep(objects.some(o=>o.type==='sticker')?'adjust':'cut'); }
   else { setTool(orig?'cut':'cut'); } }
 $('#funBtn').onclick=()=>{ if(!fun.on) toggleFun(); }; $('#edBtn').onclick=()=>{ if(fun.on) toggleFun(); };
 function funPickTarget(){ openPicker('Pick the photo to paste onto','The cutout will be placed in the middle, ready to move.',()=>{ funStep('adjust'); funPlace(tray.filter(Boolean)[0]); }); }
 function funPlace(t){ if(!t) return; placeCutout(t.c); fun.step='adjust'; renderFunbar(); showPanel(); }
+
+const TEXT_STYLES=[
+  ['Meme',{font:'Anton',weight:400,color:'#ffffff',outline:'#000000',shadow:false,bg:null,glow:null,upper:true,italic:false}],
+  ['Bold',{font:'Oswald',weight:700,color:'#ffffff',outline:null,shadow:true,bg:null,glow:null,upper:false,italic:false}],
+  ['Marker',{font:'Permanent Marker',weight:400,color:'#ff3b3b',outline:'#ffffff',shadow:false,bg:null,glow:null,upper:false,italic:false}],
+  ['Script',{font:'Lobster',weight:400,color:'#ffffff',outline:null,shadow:true,bg:null,glow:null,upper:false,italic:false}],
+  ['Handwritten',{font:'Caveat',weight:700,color:'#111111',outline:null,shadow:false,bg:null,glow:null,upper:false,italic:false}],
+  ['Neon',{font:'Bebas Neue',weight:400,color:'#ffffff',outline:null,shadow:false,bg:null,glow:'#ff2bd6',upper:false,italic:false}],
+  ['Label',{font:'Manrope',weight:800,color:'#111111',outline:null,shadow:false,bg:'#ffffff',glow:null,upper:false,italic:false}],
+  ['Headline',{font:'Playfair Display',weight:700,color:'#ffffff',outline:null,shadow:true,bg:null,glow:null,upper:false,italic:true}],
+  ['Typewriter',{font:'Space Mono',weight:700,color:'#111111',outline:null,shadow:false,bg:'rgba(255,255,255,.85)',glow:null,upper:false,italic:false}]];
+let lastTextStyle=0;
+function fitText(o){ const max=orig.width*.94/(o.scale||1); for(let k=0;k<40;k++){ const w=objBox(vctx,o).w; if(w<=max||o.fontSize<10*imgScale()) break; o.fontSize*=.94; } }
+function addFunText(){ const k=imgScale(), st=TEXT_STYLES[lastTextStyle][1]; addObject({type:'text',text:'Your text',x:orig.width/2,y:orig.height*.82,rot:0,scale:1,fontSize:64*k,align:'center',opacity:1,blend:'source-over',styleIx:lastTextStyle,...st}); focusTextInput(); }
+function addFunBalloon(style){ const k=imgScale(); addObject({type:'balloon',style,text:'Type here',x:orig.width/2,y:orig.height*.3,rot:0,scale:1,fontSize:36*k,fill:'#ffffff',stroke:'#111111',color:'#111111',font:'Manrope',weight:800,tailA:Math.PI/2+.4,tailL:1,opacity:1,blend:'source-over'}); focusTextInput(); }
+function focusTextInput(){ const i=panel.querySelector('input[type=text]'); if(i){ try{ i.focus(); i.select(); }catch(_){ } } }
+function funTextPanel(P){
+  const r=mk('div',{className:'row'}); r.append(chip('+ Text',true,addFunText), chip('💬 Speech',false,()=>addFunBalloon('speech')), chip('💭 Thought',false,()=>addFunBalloon('thought')), chip('💥 Shout',false,()=>addFunBalloon('shout')), chip('▭ Caption',false,()=>addFunBalloon('box')),
+    chip('✎ Write with finger',funWrite,()=>{ funWrite=!funWrite; if(funWrite){ sel=null; draw.mode='brush'; setTool('draw'); setHint('Write or draw with your finger'); } else { setTool('text',true); setHint(''); } updateObjbar(); render(); showPanel(); })); P.append(r);
+  if(funWrite){ P.append(slider('Pen size',1,60,draw.size,v=>draw.size=v)); const sw=swatches(draw.color,c=>draw.color=c); sw.prepend(mk('span',{className:'lbl',textContent:'Pen'})); P.append(sw);
+    P.append(mk('div',{className:'row'},chip('Eraser',draw.mode==='erase',()=>{ draw.mode=draw.mode==='erase'?'brush':'erase'; showPanel(); }), chip('Clear writing',false,()=>{ snapshot('doodle'); doodle.getContext('2d').clearRect(0,0,doodle.width,doodle.height); render(); }), mk('span',{className:'note',textContent:'↶ undoes the last stroke.'}))); return; }
+  const o=sel&&(sel.type==='text'||sel.type==='balloon')?sel:null;
+  if(!o){ P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Add text or a speech bubble, then type. Drag it into place; the blue corner knob spins and resizes it. Tap any text on the photo to change it.'}))); return; }
+  const i=mk('input',{type:'text',value:o.text,id:'funTextInput',placeholder:'Type here'}); let sn=false; i.oninput=()=>{ if(!sn){ snapshot('objects'); sn=true; } o.text=i.value; if(o.type==='text') fitText(o); render(); };
+  i.onfocus=()=>{ if(i.value==='Your text'||i.value==='Type here') setTimeout(()=>{ try{ i.select(); }catch(_){ } },0); };
+  const r1=mk('div',{className:'row'},i); r1.append(chip('↵',false,()=>{ i.value+='\n'; i.dispatchEvent(new Event('input')); i.focus(); })); P.append(r1);
+  if(o.type==='text'){
+    const rs=mk('div',{className:'row'}); TEXT_STYLES.forEach(([n,st],ix)=>{ const b=chip(n,o.styleIx===ix,()=>{ snapshot('objects'); Object.assign(o,st); o.styleIx=ix; lastTextStyle=ix; fitText(o); render(); showPanel(); }); b.classList.add('fontbtn'); b.style.fontFamily=`'${st.font}'`; if(st.italic) b.style.fontStyle='italic'; rs.append(b); }); P.append(rs);
+    const sw=swatches(o.color,c=>{ snapshot('objects'); o.color=c; render(); }); sw.prepend(mk('span',{className:'lbl',textContent:'Color'})); P.append(sw);
+    const r2=mk('div',{className:'row'}); r2.append(chip('Outline',!!o.outline,()=>{ snapshot('objects'); o.outline=o.outline?null:(o.color==='#000000'||o.color==='#111111'?'#ffffff':'#000000'); render(); showPanel(); }), chip('Shadow',!!o.shadow,()=>{ snapshot('objects'); o.shadow=!o.shadow; render(); showPanel(); }), chip('Glow',!!o.glow,()=>{ snapshot('objects'); o.glow=o.glow?null:'#ff2bd6'; render(); showPanel(); }), chip('Box',!!o.bg,()=>{ snapshot('objects'); o.bg=o.bg?null:'#ffffff'; render(); showPanel(); }), chip('ABC',!!o.upper,()=>{ snapshot('objects'); o.upper=!o.upper; render(); showPanel(); }), chip('◧',o.align==='left',()=>{ o.align='left'; render(); showPanel(); }), chip('▣',o.align==='center',()=>{ o.align='center'; render(); showPanel(); }), chip('◨',o.align==='right',()=>{ o.align='right'; render(); showPanel(); })); P.append(r2);
+    if(o.outline){ const so=swatches(o.outline,c=>{ snapshot('objects'); o.outline=c; render(); }); so.prepend(mk('span',{className:'lbl',textContent:'Outline'})); P.append(so); }
+    if(o.glow){ const sg=swatches(o.glow,c=>{ snapshot('objects'); o.glow=c; render(); }); sg.prepend(mk('span',{className:'lbl',textContent:'Glow'})); P.append(sg); }
+    if(o.bg){ const sb=swatches(o.bg.startsWith('#')?o.bg:'#ffffff',c=>{ snapshot('objects'); o.bg=c; render(); }); sb.prepend(mk('span',{className:'lbl',textContent:'Box'})); P.append(sb); }
+  } else {
+    const sf=swatches(o.fill,c=>{ snapshot('objects'); o.fill=c; const [r_,g_,b_]=hexRgb(c); o.color=(r_*.299+g_*.587+b_*.114)>140?'#111111':'#ffffff'; render(); }); sf.prepend(mk('span',{className:'lbl',textContent:'Bubble'})); P.append(sf);
+    P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Drag the small blue dot to point the tail at whoever is talking.'})));
+  }
+  P.append(slider('See-through',0,90,Math.round((1-(o.opacity??1))*100),v=>{ o.opacity=1-v/100; render(); },1,v=>v+'%'));
+  P.append(mk('div',{className:'row'},chip('Straighten',false,()=>{ snapshot('objects'); o.rot=0; render(); }), chip('Duplicate',false,()=>$('#dupObj').click()), chip('Delete',false,()=>$('#delObj').click())));
+}
 let funSliderSync=null; function syncFunSliders(){ if(funSliderSync) funSliderSync(); }
 function funPanel(P){
   if(fun.step==='cut'){
@@ -845,6 +887,7 @@ function funPanel(P){
     if(items.length) r.append(chip(trayEdit?'Done':'Remove…',trayEdit,()=>{ trayEdit=!trayEdit; showPanel(); })); r.append(pasteTarget('Paste image')); P.append(r);
     P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'The highlighted cutout is the one that gets pasted. Tap another to choose it. Paste image accepts a picture copied from any app.'})));
   }
+  if(fun.step==='text'){ funTextPanel(P); const sv=mk('button',{className:'primary bigbtn',textContent:'Save picture'}); sv.onclick=doExport; P.append(mk('div',{className:'row'},sv)); }
   if(fun.step==='adjust'){
     const o=sel&&sel.type==='sticker'?sel:null;
     if(o) layerControls(P,o);
@@ -863,7 +906,7 @@ function funPanel(P){
       r2.append(mk('span',{className:'lbl',textContent:'Nudge'}),nd, chip('Duplicate',false,()=>$('#dupObj').click()), chip('Send back',false,()=>{ snapshot('objects'); objects=objects.filter(x=>x!==o); objects.unshift(o); render(); }), chip('Delete',false,()=>$('#delObj').click())); P.append(r2);
       P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:layerBrush.mode==='move'?'Drag to move it. Drag the blue corner knob around to spin it, in or out to resize. Tap Erase to rub parts of it away.':'Rub with your finger. Switch back to Move to reposition it, your erasing moves with it.'})));
     } else P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:objects.some(x=>x.type==='sticker')?'Tap a cutout on the photo to adjust it.':'No cutout on this photo yet.'})));
-    const r3=mk('div',{className:'row'}); r3.append(chip('+ Photo on top',false,openLayerPicker), chip('+ Cut another',true,()=>openPicker('Pick the photo to cut from','',()=>funStep('cut'))), chip('+ Paste a saved cutout',false,()=>funStep('place')), chip('Change background',false,()=>openPicker('Pick a new background photo','Your cutouts stay saved and will be pasted onto it.',()=>{ funStep('adjust'); funPlace(tray.filter(Boolean)[0]); }))); P.append(r3);
+    const r3=mk('div',{className:'row'}); r3.append(chip('Aa Add text →',false,()=>funStep('text')), chip('+ Photo on top',false,openLayerPicker), chip('+ Cut another',true,()=>openPicker('Pick the photo to cut from','',()=>funStep('cut'))), chip('+ Paste a saved cutout',false,()=>funStep('place')), chip('Change background',false,()=>openPicker('Pick a new background photo','Your cutouts stay saved and will be pasted onto it.',()=>{ funStep('adjust'); funPlace(tray.filter(Boolean)[0]); }))); P.append(r3);
     const sv=mk('button',{className:'primary bigbtn',textContent:'Save picture'}); sv.onclick=doExport; P.append(mk('div',{className:'row'},sv));
   }
 }
@@ -1027,7 +1070,7 @@ $('#closeOverlay').onclick=()=>{ $('#overlay').hidden=true; URL.revokeObjectURL(
 loadTray(); showPanel(); document.fonts&&document.fonts.ready.then(()=>render());
 $('#edBtn').classList.add('on');
 function navFade(){ nav.classList.toggle('more', nav.scrollWidth-nav.clientWidth-nav.scrollLeft>8); } nav.addEventListener('scroll',navFade,{passive:true}); window.addEventListener('resize',navFade); navFade();
-let startMode='editor'; try{ startMode=localStorage.getItem('darkroom-mode')||'editor'; }catch(_){}
+let startMode='fun'; try{ startMode=localStorage.getItem('darkroom-mode2')||'fun'; }catch(_){}
 if(startMode==='fun') toggleFun();
 offerResume();
 })();
