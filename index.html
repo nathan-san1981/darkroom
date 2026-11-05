@@ -30,7 +30,7 @@ img{max-width:100%}
 </head>
 <body>
 <title>Darkroom</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;800&family=Oswald:wght@500;700&family=Playfair+Display:ital,wght@0,700;1,700&family=Bebas+Neue&family=Permanent+Marker&family=Caveat:wght@700&family=Lobster&family=Anton&family=Cormorant+Garamond:ital,wght@1,600&family=Space+Mono:wght@700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;800&family=Oswald:wght@500;700&family=Playfair+Display:ital,wght@0,700;1,700&family=Bebas+Neue&family=Permanent+Marker&family=Caveat:wght@700&family=Lobster&family=Anton&family=Cormorant+Garamond:ital,wght@1,600&family=Space+Mono:wght@700&family=Bangers&family=Comic+Neue:wght@700&display=swap">
 <style>
 /* Layout: one-screen editor. Header strip / stage / context panel / tool tabs. Dark-first; neutrals biased slightly blue like a darkroom. */
 :root{
@@ -94,7 +94,10 @@ body.fun #funbar{display:flex}
 .seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
 .seg button{border:0;border-radius:0;background:transparent;color:var(--muted);padding:6px 9px}
 .seg button.on{background:var(--accent);color:var(--accent-ink)}
-@media (max-width:430px){ header h1{display:none} header .seg{margin-right:auto} }
+@media (max-width:430px){ header h1{display:none} #modeBtn{margin-right:auto} }
+#modeBtn{color:var(--muted)}
+body:not(.fun) #modeBtn{color:var(--accent-ink);background:var(--accent);border-color:transparent}
+body.fun #cmpBtn,body.fun #layersBtn{display:none}
 .bigbtn{width:100%;padding:10px;font-size:14px;border-radius:11px}
 .nudge{display:grid;grid-template-columns:repeat(3,34px);gap:3px}
 .nudge button{padding:6px 0}
@@ -159,13 +162,17 @@ html,body{overscroll-behavior:none}
 #welcome li b{color:var(--fg)}
 #welcome .install{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:12px;background:var(--panel2);font-size:13px;color:var(--fg);line-height:1.4}
 #welcome .install svg{width:22px;height:22px;flex:none;color:var(--sel)}
+#panel button.chip,#panel .row>button{min-height:36px;padding:7px 12px;font-size:13px}
+#panel .sw{width:32px;height:32px}
+header button{min-height:36px}
+#funbar .step{min-height:40px;font-size:13px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
 <div id="app">
   <header>
     <h1>Dark<b>room</b></h1>
-    <div class="seg" role="group" aria-label="Mode"><button id="funBtn" title="Fun mode: cut and paste between photos">Fun</button><button id="edBtn" title="Full editor">Editor</button></div>
+    <button id="modeBtn" title="Switch between Fun and the full editor">More tools</button><span id="funBtn" hidden></span><span id="edBtn" hidden></span>
     <button class="icon" id="undoBtn" title="Undo" disabled>↶</button>
     <button class="icon" id="redoBtn" title="Redo" disabled>↷</button>
     <button class="icon" id="cmpBtn" title="Hold to compare with original" disabled>◐</button>
@@ -184,7 +191,7 @@ html,body{overscroll-behavior:none}
       <p id="pickSub">Pick a sample below, choose one from your library, or copy a photo and paste it here.</p>
       <div class="startrow">
         <button class="primary" id="openBtn">Choose photo</button>
-        <div id="pasteZone" class="pasteZone" contenteditable="true" aria-label="Paste a photo here">Tap here, then Paste</div>
+        <div id="pasteZone" class="pasteZone" contenteditable="true" aria-label="Paste a photo here">Paste a copied photo</div>
       </div>
       <div class="samplesLbl">Or try a sample</div>
       <div id="samples"></div>
@@ -319,7 +326,7 @@ $('#cancelStart').onclick=()=>{ $('#empty').hidden=true; pickCb=null; pickAsLaye
 SAMPLES.forEach(s=>{ const b=mk('button',{title:s.name}); b.append(mk('img',{src:s.thumb,alt:s.name}), mk('span',{textContent:s.name})); b.onclick=()=>loadImage(s.src); $('#samples').append(b); });
 // Paste: works from the page anywhere, and the paste zone gives iOS a target for its Paste menu
 function imageFromClipboard(e){ const items=[...(e.clipboardData?.items||[])]; const it=items.find(i=>i.type.startsWith('image/')); return it?it.getAsFile():(e.clipboardData?.files?.[0]||null); }
-document.addEventListener('paste',e=>{ const f=imageFromClipboard(e); e.preventDefault(); $('#pasteZone').textContent='Tap here, then Paste'; document.activeElement?.blur?.(); if(!f){ toast('No image on the clipboard'); return; }
+document.addEventListener('paste',e=>{ const f=imageFromClipboard(e); e.preventDefault(); $('#pasteZone').textContent='Paste a copied photo'; document.activeElement?.blur?.(); if(!f){ toast('No image on the clipboard'); return; }
   const asLayer=orig&&$('#empty').hidden; const r=new FileReader(); r.onload=()=>{ if(!asLayer){ loadImage(r.result); return; } const im=new Image(); im.onload=()=>{ const c=cvs(im.naturalWidth,im.naturalHeight); c.getContext('2d').drawImage(im,0,0); addToTray(c); placeCutout(c); toast('Pasted as a layer'); }; im.src=r.result; }; r.readAsDataURL(f); });
 $('#pasteZone').addEventListener('beforeinput',e=>{ if(e.inputType!=='insertFromPaste') e.preventDefault(); });
 $('#stickerFile').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ const im=new Image(); im.onload=()=>{ const s=Math.min(1,(orig.width*.5)/im.width,(orig.height*.5)/im.height); addObject({type:'sticker',img:im,w:im.width*s,h:im.height*s,x:orig.width/2,y:orig.height/2,rot:0,scale:1,opacity:1,blend:'source-over',flip:false}); }; im.src=r.result; }; r.readAsDataURL(f); e.target.value=''; });
@@ -431,7 +438,7 @@ function imgScale(){ return orig.width/1000; }
 function addObject(o){ snapshot('objects'); o.id=uid(); o.opacity??=1; o.blend??='source-over'; objects.push(o); sel=o; render(); updateObjbar(); showPanel(); }
 function wrapLines(ctx,text,maxW){ const out=[]; for(const para of text.split('\n')){ let line=''; for(const w of para.split(' ')){ const t=line?line+' '+w:w; if(ctx.measureText(t).width>maxW&&line){ out.push(line); line=w; } else line=t; } out.push(line); } return out; }
 function fontStr(o){ return `${o.italic?'italic ':''}${o.weight||700} ${o.fontSize}px '${o.font}',sans-serif`; }
-function balloonMetrics(ctx,o){ ctx.font=fontStr(o); const lines=wrapLines(ctx,o.text,o.fontSize*10); const tw=Math.max(...lines.map(l=>ctx.measureText(l).width),o.fontSize*2); const lh=o.fontSize*1.18, pad=o.fontSize*.7; return {lines,lh,w:tw+pad*2,h:lines.length*lh+pad*2}; }
+function balloonMetrics(ctx,o){ ctx.font=fontStr(o); const lines=wrapLines(ctx,o.upper?o.text.toUpperCase():o.text,o.fontSize*10); const tw=Math.max(...lines.map(l=>ctx.measureText(l).width),o.fontSize*2); const lh=o.fontSize*1.18, pad=o.fontSize*.7; return {lines,lh,w:tw+pad*2,h:lines.length*lh+pad*2}; }
 function drawObject(ctx,o,baseImg){
   ctx.save(); ctx.globalAlpha=o.opacity??1; ctx.globalCompositeOperation=o.blend||'source-over';
   if(o.type==='censor'){ const s=baseImg.width/orig.width; const x=o.x-o.w/2, y=o.y-o.h/2; ctx.beginPath(); ctx.rect(x,y,o.w,o.h); ctx.clip();
@@ -454,9 +461,14 @@ function drawObject(ctx,o,baseImg){
       ctx.shadowColor='transparent'; if(o.glow){ ctx.save(); ctx.shadowColor=o.glow; ctx.shadowBlur=o.fontSize*.45; ctx.fillStyle=o.glow; ctx.fillText(l,ox,y); ctx.shadowBlur=o.fontSize*.2; ctx.fillText(l,ox,y); ctx.restore(); } ctx.fillStyle=o.color; ctx.fillText(l,ox,y); }); }
   else if(o.type==='balloon'){ const m=balloonMetrics(ctx,o), w=m.w, h=m.h; ctx.lineWidth=Math.max(1.5,o.fontSize*.09); ctx.strokeStyle=o.stroke; ctx.fillStyle=o.fill; ctx.lineJoin='round';
     const tx=Math.cos(o.tailA)*(h*.5+o.fontSize*2.2*o.tailL), ty=Math.sin(o.tailA)*(h*.5+o.fontSize*2.2*o.tailL);
-    if(o.style==='thought'){ ctx.beginPath(); ctx.ellipse(0,0,w/2,h/2,0,0,Math.PI*2); ctx.fill(); ctx.stroke(); for(let i=1;i<=3;i++){ const t=i/3.6, r=o.fontSize*(.55-.13*i); ctx.beginPath(); ctx.arc(tx*t*.95,ty*t*.95,r,0,Math.PI*2); ctx.fill(); ctx.stroke(); } }
+    if(o.style==='thought'){ const rx=w/2*1.04, ry=h/2*1.08, n=Math.max(8,Math.round((rx+ry)/(o.fontSize*.55))), bumps=[];
+      for(let i=0;i<n;i++){ const a=i/n*Math.PI*2; bumps.push([Math.cos(a)*rx,Math.sin(a)*ry,o.fontSize*(.62+.12*Math.sin(i*2.3))]); }
+      const puffs=[1,2,3].map(i=>{ const t=.55+i*.15; return [tx*t,ty*t,o.fontSize*(.42-.1*i)]; });
+      const lw=ctx.lineWidth; ctx.lineWidth=lw*2; for(const [x,y,r] of bumps.concat(puffs)){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke(); }
+      ctx.lineWidth=lw; for(const [x,y,r] of bumps.concat(puffs)){ ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill(); } ctx.beginPath(); ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2); ctx.fill(); }
+    else if(o.style==='caption'){ ctx.fillRect(-w/2,-h/2,w,h); ctx.strokeRect(-w/2,-h/2,w,h); }
     else if(o.style==='shout'){ const n=22, pts=[]; for(let i=0;i<n*2;i++){ const a=i/(n*2)*Math.PI*2, kk=i%2?1:1.28; pts.push([Math.cos(a)*w/2*kk*(.9+.2*Math.sin(i*7)),Math.sin(a)*h/2*kk*1.15]); } const ai=Math.round(((o.tailA+Math.PI*2)%(Math.PI*2))/(Math.PI*2)*n*2)%(n*2); pts[ai]=[tx,ty]; ctx.beginPath(); pts.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1])); ctx.closePath(); ctx.fill(); ctx.stroke(); }
-    else { const r=o.style==='box'?o.fontSize*.3:Math.min(w,h)*.5; const path=new Path2D(); path.roundRect(-w/2,-h/2,w,h,r); const ang=o.tailA, px=Math.cos(ang+Math.PI/2)*o.fontSize*.55, py=Math.sin(ang+Math.PI/2)*o.fontSize*.55, bx=Math.cos(ang)*w*.35, by=Math.sin(ang)*h*.35; const tail=new Path2D(); tail.moveTo(bx+px,by+py); tail.lineTo(tx,ty); tail.lineTo(bx-px,by-py); tail.closePath(); ctx.fill(path); ctx.fill(tail); ctx.stroke(tail); ctx.stroke(path); ctx.fill(path); ctx.fill(tail); }
+    else { if(o.style==='whisper') ctx.setLineDash([o.fontSize*.35,o.fontSize*.25]); const r=o.style==='box'?o.fontSize*.3:Math.min(w,h)*.5; const path=new Path2D(); path.roundRect(-w/2,-h/2,w,h,r); const ang=o.tailA, px=Math.cos(ang+Math.PI/2)*o.fontSize*.55, py=Math.sin(ang+Math.PI/2)*o.fontSize*.55, bx=Math.cos(ang)*w*.35, by=Math.sin(ang)*h*.35; const tail=new Path2D(); tail.moveTo(bx+px,by+py); tail.lineTo(tx,ty); tail.lineTo(bx-px,by-py); tail.closePath(); ctx.fill(path); ctx.fill(tail); ctx.stroke(tail); ctx.stroke(path); ctx.setLineDash([]); ctx.fill(path); ctx.fill(tail); }
     ctx.fillStyle=o.color; ctx.font=fontStr(o); ctx.textAlign='center'; ctx.textBaseline='middle'; m.lines.forEach((l,i)=>ctx.fillText(l,0,(i-(m.lines.length-1)/2)*m.lh)); }
   ctx.restore();
 }
@@ -469,7 +481,7 @@ function objBox(ctx,o){ if(o.type==='sticker'||o.type==='censor') return {w:o.w,
   const m=balloonMetrics(ctx,o); return {w:m.w*(o.style==='shout'?1.3:1),h:m.h*(o.style==='shout'?1.4:1)}; }
 function tailTip(o){ const m=balloonMetrics(vctx,o); const d=m.h*.5+o.fontSize*2.2*o.tailL; const c=Math.cos(o.rot), s=Math.sin(o.rot), lx=Math.cos(o.tailA)*d*o.scale, ly=Math.sin(o.tailA)*d*o.scale; return {x:o.x+lx*c-ly*s,y:o.y+lx*s+ly*c}; }
 function drawSelection(ctx,o){ const b=objBox(ctx,o); ctx.save(); ctx.translate(o.x,o.y); ctx.rotate(o.rot||0); ctx.scale(o.scale||1,o.scale||1); const sc=1/fit/(o.scale||1); ctx.setLineDash([6*sc,5*sc]); ctx.lineWidth=1.5*sc; ctx.strokeStyle='#58c4ff'; ctx.strokeRect(-b.w/2,-b.h/2,b.w,b.h); ctx.restore();
-  if(o.type==='balloon'){ const t=tailTip(o); ctx.fillStyle='#58c4ff'; ctx.strokeStyle='#fff'; ctx.lineWidth=2/fit; ctx.beginPath(); ctx.arc(t.x,t.y,9/fit,0,Math.PI*2); ctx.fill(); ctx.stroke(); }
+  if(o.type==='balloon'&&o.style!=='caption'){ const t=tailTip(o); ctx.fillStyle='#58c4ff'; ctx.strokeStyle='#fff'; ctx.lineWidth=2/fit; ctx.beginPath(); ctx.arc(t.x,t.y,9/fit,0,Math.PI*2); ctx.fill(); ctx.stroke(); }
   if((o.type==='sticker'||o.type==='text'||o.type==='balloon')&&!(tool==='overlay'&&layerBrush.mode!=='move')){ const h=stickerHandles(o).knob, u=1/(fit*vz.s); ctx.save(); ctx.fillStyle='#58c4ff'; ctx.strokeStyle='#fff'; ctx.lineWidth=2.5*u; ctx.beginPath(); ctx.arc(h.x,h.y,15*u,0,Math.PI*2); ctx.fill(); ctx.stroke();
     ctx.fillStyle='#fff'; ctx.font=`bold ${15*u}px sans-serif`; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('⟳',h.x,h.y+1*u); ctx.restore(); }
   if(o.type==='censor'||o.type==='shape'){ const h=handlePos(o); ctx.fillStyle='#58c4ff'; ctx.strokeStyle='#fff'; ctx.lineWidth=2/fit; ctx.beginPath(); ctx.arc(h.x,h.y,9/fit,0,Math.PI*2); ctx.fill(); ctx.stroke(); } }
@@ -757,7 +769,7 @@ view.addEventListener('pointerdown',e=>{
   if(tool==='retouch'){ if(ret.mode==='clone'&&(!ret.cloneSrc||e.altKey)){ ret.cloneSrc=p; ret.cloneOff=null; render(); setHint('Source set. Now paint where it should go.'); return; } if(ret.mode==='redeye'){ snapshot('orig'); redEye(p); refreshPreview(); render(); return; } snapshot('orig'); if(ret.mode==='clone'&&!ret.cloneOff) ret.cloneOff={x:ret.cloneSrc.x-p.x,y:ret.cloneSrc.y-p.y}; gesture={kind:'retouch',last:p,src:cloneCanvas(orig)}; retouchDab(p,p,gesture.src); refreshPreview(); render(); return; }
   if(tool==='overlay'&&sel&&sel.type==='sticker'&&layerBrush.mode!=='move'){ startLayerStroke(sel,p); gesture={kind:'layererase',last:p}; render(); return; }
   if(sel&&(sel.type==='sticker'||sel.type==='text'||sel.type==='balloon')){ const h=stickerHandles(sel).knob, R=30/(fit*vz.s); if(Math.hypot(h.x-p.x,h.y-p.y)<R){ snapshot('objects'); gesture={kind:'knob',a0:Math.atan2(p.y-sel.y,p.x-sel.x),r0:sel.rot||0,d0:Math.max(1,Math.hypot(p.x-sel.x,p.y-sel.y)),s0:sel.scale||1}; return; } }
-  if(sel&&sel.type==='balloon'){ const t=tailTip(sel); if(Math.hypot(t.x-p.x,t.y-p.y)<18/fit){ snapshot('objects'); gesture={kind:'tail'}; return; } }
+  if(sel&&sel.type==='balloon'&&sel.style!=='caption'){ const t=tailTip(sel); if(Math.hypot(t.x-p.x,t.y-p.y)<18/fit){ snapshot('objects'); gesture={kind:'tail'}; return; } }
   if(sel&&(sel.type==='censor'||sel.type==='shape')){ const hp=handlePos(sel); if(Math.hypot(hp.x-p.x,hp.y-p.y)<18/fit){ snapshot('objects'); gesture={kind:'resize',p0:p,w0:sel.w,h0:sel.h,x0:sel.x,y0:sel.y}; return; } }
   const h=hit(p.x,p.y); if(h!==sel){ sel=h; updateObjbar(); render(); showPanel(); }
   if(h&&fun.on){ snapshot('objects'); gesture={kind:'drag',ox:h.x-p.x,oy:h.y-p.y}; const want=(h.type==='text'||h.type==='balloon'||h.type==='shape'||h.type==='censor')?'text':'adjust'; if(fun.step!==want){ fun.step=want; if(want==='text'){ funWrite=false; setTool('text',true); } else setTool('overlay',true); renderFunbar(); showPanel(); } return; }
@@ -862,14 +874,16 @@ function funStep(st){ fun.step=st; funWrite=false; pickingColor=false; if(st==='
 function renderFunbar(){ const bar=$('#funbar'); bar.replaceChildren(); const idx=FUN_STEPS.findIndex(x=>x[0]===fun.step);
   FUN_STEPS.forEach(([k,l],i)=>{ const b=mk('button',{className:'step'+(k===fun.step?' on':i<idx?' done':'')}); b.append(mk('b',{textContent:i<idx?'✓':String(i+1)}),l); b.onclick=()=>{ if(k==='adjust'&&!objects.some(o=>o.type==='sticker')){ toast('Place a cutout first'); return; } funStep(k); }; bar.append(b); });
 }
-function toggleFun(){ fun.on=!fun.on; document.body.classList.toggle('fun',fun.on); $('#funBtn').classList.toggle('on',fun.on); $('#edBtn').classList.toggle('on',!fun.on); try{ localStorage.setItem('darkroom-mode2',fun.on?'fun':'editor'); }catch(_){} updateObjbar();
+function toggleFun(){ fun.on=!fun.on; document.body.classList.toggle('fun',fun.on); $('#modeBtn').textContent=fun.on?'More tools':'← Fun'; $('#saveBtn').textContent=fun.on?'Save':'Export'; $('#funBtn').classList.toggle('on',fun.on); $('#edBtn').classList.toggle('on',!fun.on); try{ localStorage.setItem('darkroom-mode2',fun.on?'fun':'editor'); }catch(_){} updateObjbar();
   if(fun.on){ if(!orig){ openPicker('Pick the photo to cut from','Choose one of your photos. Next you\'ll paint over the part you want.',()=>funStep('cut')); renderFunbar(); } else funStep(objects.some(o=>o.type==='sticker')?'adjust':'cut'); }
   else { setTool(orig?'cut':'cut'); } }
-$('#funBtn').onclick=()=>{ if(!fun.on) toggleFun(); }; $('#edBtn').onclick=()=>{ if(fun.on) toggleFun(); };
+$('#modeBtn').onclick=toggleFun;
 function funPickTarget(){ openPicker('Pick the photo to paste onto','The cutout will be placed in the middle, ready to move.',()=>{ funStep('adjust'); funPlace(tray.filter(Boolean)[0]); }); }
 function funPlace(t){ if(!t) return; placeCutout(t.c); fun.step='adjust'; renderFunbar(); showPanel(); }
 
 const TEXT_STYLES=[
+  ['POW!',{font:'Bangers',weight:400,color:'#ffd60a',outline:'#c1121f',shadow:true,bg:null,glow:null,upper:true,italic:false}],
+  ['Comic',{font:'Comic Neue',weight:700,color:'#111111',outline:null,shadow:false,bg:'#ffffff',glow:null,upper:true,italic:false}],
   ['Meme',{font:'Anton',weight:400,color:'#ffffff',outline:'#000000',shadow:false,bg:null,glow:null,upper:true,italic:false}],
   ['Bold',{font:'Oswald',weight:700,color:'#ffffff',outline:null,shadow:true,bg:null,glow:null,upper:false,italic:false}],
   ['Marker',{font:'Permanent Marker',weight:400,color:'#ff3b3b',outline:'#ffffff',shadow:false,bg:null,glow:null,upper:false,italic:false}],
@@ -879,19 +893,24 @@ const TEXT_STYLES=[
   ['Label',{font:'Manrope',weight:800,color:'#111111',outline:null,shadow:false,bg:'#ffffff',glow:null,upper:false,italic:false}],
   ['Headline',{font:'Playfair Display',weight:700,color:'#ffffff',outline:null,shadow:true,bg:null,glow:null,upper:false,italic:true}],
   ['Typewriter',{font:'Space Mono',weight:700,color:'#111111',outline:null,shadow:false,bg:'rgba(255,255,255,.85)',glow:null,upper:false,italic:false}]];
-let lastTextStyle=0;
+let lastTextStyle=2;
 function fitText(o){ const max=orig.width*.94/(o.scale||1); for(let k=0;k<40;k++){ const w=objBox(vctx,o).w; if(w<=max||o.fontSize<10*imgScale()) break; o.fontSize*=.94; } }
 function addFunText(){ const k=imgScale(), st=TEXT_STYLES[lastTextStyle][1]; addObject({type:'text',text:'Your text',x:orig.width/2,y:orig.height*.82,rot:0,scale:1,fontSize:64*k,align:'center',opacity:1,blend:'source-over',styleIx:lastTextStyle,...st}); focusTextInput(); }
-function addFunBalloon(style){ const k=imgScale(); addObject({type:'balloon',style,text:'Type here',x:orig.width/2,y:orig.height*.3,rot:0,scale:1,fontSize:36*k,fill:'#ffffff',stroke:'#111111',color:'#111111',font:'Manrope',weight:800,tailA:Math.PI/2+.4,tailL:1,opacity:1,blend:'source-over'}); focusTextInput(); }
-function focusTextInput(){ const i=panel.querySelector('input[type=text]'); if(i){ try{ i.focus(); i.select(); }catch(_){ } } }
+const BUBBLE_FONTS=[['Comic Neue',700,'Comic'],['Bangers',400,'Bangers'],['Permanent Marker',400,'Marker'],['Manrope',800,'Clean']];
+function bubbleDefaults(style){ const shout=style==='shout', cap=style==='caption';
+  return {font:shout?'Bangers':'Comic Neue',weight:shout?400:700,upper:true,fill:cap?'#ffe97a':shout?'#fff7d6':'#ffffff',stroke:'#111111',color:'#111111',text:cap?'Meanwhile…':shout?'WHOA!':style==='whisper'?'psst…':style==='thought'?'Hmm…':'Type here'}; }
+function addFunBalloon(style){ const k=imgScale(), d=bubbleDefaults(style); addObject({type:'balloon',style,x:orig.width/2,y:orig.height*(style==='caption'?.12:.3),rot:0,scale:1,fontSize:(style==='shout'?44:34)*k,tailA:Math.PI/2+.4,tailL:1,opacity:1,blend:'source-over',...d}); focusTextInput(); }
+function addPow(){ const k=imgScale(), st=TEXT_STYLES[0][1]; addObject({type:'text',text:'POW!',x:orig.width*.7,y:orig.height*.25,rot:-.18,scale:1,fontSize:110*k,align:'center',opacity:1,blend:'source-over',styleIx:0,...st}); focusTextInput(); }
+function focusTextInput(){ if(sel) sel._fresh=true; const i=panel.querySelector('input[type=text]'); if(i){ try{ i.focus(); i.select(); }catch(_){ } } }
 function funTextPanel(P){
-  const r=mk('div',{className:'row'}); r.append(chip('+ Text',true,addFunText), chip('💬 Speech',false,()=>addFunBalloon('speech')), chip('💭 Thought',false,()=>addFunBalloon('thought')), chip('💥 Shout',false,()=>addFunBalloon('shout')), chip('▭ Caption',false,()=>addFunBalloon('box')),
+  const rb=mk('div',{className:'row'}); rb.append(mk('span',{className:'lbl',textContent:'Bubbles'}), chip('💬 Speech',true,()=>addFunBalloon('speech')), chip('💭 Thought',false,()=>addFunBalloon('thought')), chip('💥 Shout',false,()=>addFunBalloon('shout')), chip('🤫 Whisper',false,()=>addFunBalloon('whisper')), chip('▭ Caption',false,()=>addFunBalloon('caption')), chip('POW!',false,addPow)); P.append(rb);
+  const r=mk('div',{className:'row'}); r.append(chip('+ Text',false,addFunText),
     chip('✎ Write',funWrite==='write',()=>setFunDraw('write')), chip('🖌 Paint over',funWrite==='paint',()=>setFunDraw('paint')), chip('▬ Cover box',funWrite==='box',()=>setFunDraw('box'))); P.append(r);
   if(funWrite){ funDrawPanel(P); return; }
   const o=sel&&(sel.type==='text'||sel.type==='balloon')?sel:null;
-  if(!o){ P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Add text or a speech bubble, then type. Drag it into place; the blue corner knob spins and resizes it. Tap any text on the photo to change it.'}))); return; }
-  const i=mk('input',{type:'text',value:o.text,id:'funTextInput',placeholder:'Type here'}); let sn=false; i.oninput=()=>{ if(!sn){ snapshot('objects'); sn=true; } o.text=i.value; if(o.type==='text') fitText(o); render(); };
-  i.onfocus=()=>{ if(i.value==='Your text'||i.value==='Type here') setTimeout(()=>{ try{ i.select(); }catch(_){ } },0); };
+  if(!o){ P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Tap a bubble or + Text, then type. Drag it into place; the blue corner knob spins and resizes it. Tap anything on the photo to change it.'}))); return; }
+  const i=mk('input',{type:'text',value:o.text,id:'funTextInput',placeholder:'Type here'}); let sn=false; i.oninput=()=>{ if(!sn){ snapshot('objects'); sn=true; } o._fresh=false; o.text=i.value; if(o.type==='text') fitText(o); render(); };
+  i.onfocus=()=>{ if(!o._fresh) return; const v0=i.value; setTimeout(()=>{ if(i.value===v0&&o._fresh){ try{ i.select(); }catch(_){ } } },0); };
   const r1=mk('div',{className:'row'},i); r1.append(chip('↵',false,()=>{ i.value+='\n'; i.dispatchEvent(new Event('input')); i.focus(); })); P.append(r1);
   if(o.type==='text'){
     const rs=mk('div',{className:'row'}); TEXT_STYLES.forEach(([n,st],ix)=>{ const b=chip(n,o.styleIx===ix,()=>{ snapshot('objects'); Object.assign(o,st); o.styleIx=ix; lastTextStyle=ix; fitText(o); render(); showPanel(); }); b.classList.add('fontbtn'); b.style.fontFamily=`'${st.font}'`; if(st.italic) b.style.fontStyle='italic'; rs.append(b); }); P.append(rs);
@@ -901,8 +920,12 @@ function funTextPanel(P){
     if(o.glow){ const sg=swatches(o.glow,c=>{ snapshot('objects'); o.glow=c; render(); }); sg.prepend(mk('span',{className:'lbl',textContent:'Glow'})); P.append(sg); }
     if(o.bg){ const sb=swatches(o.bg.startsWith('#')?o.bg:'#ffffff',c=>{ snapshot('objects'); o.bg=c; render(); }); sb.prepend(mk('span',{className:'lbl',textContent:'Box'})); P.append(sb); }
   } else {
+    const rsh=mk('div',{className:'row'}); rsh.append(mk('span',{className:'lbl',textContent:'Shape'})); [['speech','Speech'],['thought','Thought'],['shout','Shout'],['whisper','Whisper'],['caption','Caption']].forEach(([st,l])=>rsh.append(chip(l,o.style===st,()=>{ snapshot('objects'); const was=o.style; o.style=st; if(st==='caption'&&was!=='caption'){ o.fill='#ffe97a'; } else if(was==='caption'&&o.fill==='#ffe97a'){ o.fill='#ffffff'; } render(); showPanel(); }))); P.append(rsh);
+    const rf=mk('div',{className:'row'}); rf.append(mk('span',{className:'lbl',textContent:'Lettering'})); BUBBLE_FONTS.forEach(([f,wt,l])=>{ const b=chip(l,o.font===f,()=>{ snapshot('objects'); o.font=f; o.weight=wt; render(); showPanel(); }); b.classList.add('fontbtn'); b.style.fontFamily=`'${f}'`; rf.append(b); }); rf.append(chip('ABC',!!o.upper,()=>{ snapshot('objects'); o.upper=!o.upper; render(); showPanel(); })); P.append(rf);
     const sf=swatches(o.fill,c=>{ snapshot('objects'); o.fill=c; const [r_,g_,b_]=hexRgb(c); o.color=(r_*.299+g_*.587+b_*.114)>140?'#111111':'#ffffff'; render(); }); sf.prepend(mk('span',{className:'lbl',textContent:'Bubble'})); P.append(sf);
-    P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Drag the small blue dot to point the tail at whoever is talking.'})));
+    const sc=swatches(o.color,c=>{ snapshot('objects'); o.color=c; render(); }); sc.prepend(mk('span',{className:'lbl',textContent:'Words'})); P.append(sc);
+    P.append(slider('Text size',12,120,Math.round(o.fontSize/imgScale()),v=>{ o.fontSize=v*imgScale(); render(); }));
+    if(o.style!=='caption') P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'Drag the small blue dot to point the tail at whoever is talking.'})));
   }
   P.append(slider('See-through',0,90,Math.round((1-(o.opacity??1))*100),v=>{ o.opacity=1-v/100; render(); },1,v=>v+'%'));
   P.append(mk('div',{className:'row'},chip('Straighten',false,()=>{ snapshot('objects'); o.rot=0; render(); }), chip('Duplicate',false,()=>$('#dupObj').click()), chip('Delete',false,()=>$('#delObj').click())));
@@ -941,7 +964,7 @@ function funDrawPanel(P){
 let funSliderSync=null; function syncFunSliders(){ if(funSliderSync) funSliderSync(); }
 function funPanel(P){
   if(fun.step==='cut'){
-    const r0=mk('div',{className:'row'}); CUT_MODES.forEach(([m,l])=>r0.append(chip(l,cut.mode===m,()=>{ cut.mode=m; if(m==='magic'&&magic.state==='idle') loadAI(); if(!cut.has) setHint(modeHint()); showPanel(); })));
+    const r0=mk('div',{className:'row'}); CUT_MODES.filter(([m])=>m!=='magic').forEach(([m,l])=>r0.append(chip(l,cut.mode===m,()=>{ cut.mode=m; if(m==='magic'&&magic.state==='idle') loadAI(); if(!cut.has) setHint(modeHint()); showPanel(); })));
     if(cut.has) r0.append(chip('Clear',false,()=>{ pushSelUndo(); clearSel(); })); r0.append(chip('Invert',false,invertSel)); P.append(r0);
     cutModeOptions(P); if(cut.has&&cut.mode!=='magicbrush') P.append(mk('div',{className:'row'},chip('✨ Snap to edges',false,()=>runSnap(true)))); P.append(slider('Edge softness',0,20,cut.feather,v=>cut.feather=v));
     const go=mk('button',{className:'primary bigbtn',textContent:cut.has?'Done. Cut it out →':(cut.mode==='magic'?'Tap what you want, then tap here':cut.mode==='magicbrush'?'Roughly paint over it, then tap here':'Paint over what you want, then tap here')}); go.disabled=!cut.has; go.onclick=async()=>{ await cutAction('copy'); funStep('place'); }; P.append(mk('div',{className:'row'},go));
@@ -1141,7 +1164,7 @@ let hslBand=0;
 function applyPreset(n){ snapshot('adj'); const d=DEF(); const keep={frame:adj.frame,frameColor:adj.frameColor,frameW:adj.frameW,frameRadius:adj.frameRadius}; Object.assign(adj,{...d,...PRESETS[n],...keep,preset:n,hsl:adj.hsl,fx:new Set()}); rebuildBase(); render(); showPanel(); }
 function autoTone(){ snapshot('adj'); const g=pv.getContext('2d'), id=g.getImageData(0,0,pv.width,pv.height).data; const hist=new Uint32Array(256); for(let i=0;i<id.length;i+=4){ hist[Math.round(id[i]*.299+id[i+1]*.587+id[i+2]*.114)]++; } const total=id.length/4; let lo=0,hi=255,acc=0; for(let i=0;i<256;i++){ acc+=hist[i]; if(acc>total*.005){ lo=i; break; } } acc=0; for(let i=255;i>=0;i--){ acc+=hist[i]; if(acc>total*.005){ hi=i; break; } } adj.levelsB=lo; adj.levelsW=hi; adj.gamma=1; rebuildBase(); render(); showPanel(); toast('Levels set to '+lo+'–'+hi); }
 $('#layersBtn').onclick=()=>{ tool='layers'; nav.querySelectorAll('button').forEach(b=>b.classList.remove('on')); updateObjbar(); showPanel(); };
-$('#saveBtn').onclick=()=>{ tool='export'; nav.querySelectorAll('button').forEach(b=>b.classList.remove('on')); sel=null; updateObjbar(); render(); showPanel(); };
+$('#saveBtn').onclick=()=>{ if(fun.on){ sel=null; updateObjbar(); render(); doExport(); return; } tool='export'; nav.querySelectorAll('button').forEach(b=>b.classList.remove('on')); sel=null; updateObjbar(); render(); showPanel(); };
 const cmp=$('#cmpBtn'); const cmpOn=()=>{ compare=true; render(); }, cmpOff=()=>{ compare=false; render(); }; cmp.addEventListener('pointerdown',cmpOn); cmp.addEventListener('pointerup',cmpOff); cmp.addEventListener('pointercancel',cmpOff); cmp.addEventListener('pointerleave',cmpOff);
 
 // =============== export ===============
@@ -1162,10 +1185,9 @@ $('#closeOverlay').onclick=()=>{ $('#overlay').hidden=true; URL.revokeObjectURL(
 
 // =============== boot ===============
 loadTray(); showPanel(); document.fonts&&document.fonts.ready.then(()=>render());
-$('#edBtn').classList.add('on');
+
 function navFade(){ nav.classList.toggle('more', nav.scrollWidth-nav.clientWidth-nav.scrollLeft>8); } nav.addEventListener('scroll',navFade,{passive:true}); window.addEventListener('resize',navFade); navFade();
-let startMode='fun'; try{ startMode=localStorage.getItem('darkroom-mode2')||'fun'; }catch(_){}
-if(startMode==='fun') toggleFun();
+toggleFun(); // always open in Fun; More tools is one tap away
 offerResume();
 setupStart();
 })();
