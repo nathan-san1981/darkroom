@@ -1,58 +1,41 @@
 # Darkroom
 
-A phone-first photo editor in a single HTML file, built as a stand-in for PicSay on iPhone. Everything runs in the browser; photos never leave the device.
+A free photo app for iPhone: paint over anything to cut it out, drop it onto another photo, and add captions, speech bubbles or your own writing. It runs in the browser, works offline once installed, and your photos never leave your phone.
 
-**Use it:** https://nathan-san1981.github.io/darkroom/
+![Darkroom](preview.png)
 
-**Install on iPhone:** open that link in Safari → Share → **Add to Home Screen**. It then launches full-screen from its own icon, and works offline after the first visit (Magic tap-select still needs a connection the first time it downloads its model).
+## Get it
 
-## Fun mode
+1. On your iPhone, open **https://nathan-san1981.github.io/darkroom/** in **Safari**.
+2. Tap **Share**, then **Add to Home Screen**.
 
-The app opens in **Fun**, a guided cut-and-paste flow; switch to **Editor** in the header for the full toolset (it remembers your choice):
+Darkroom then opens from its own icon, full-screen like any other app. (It also works in Chrome or on Android, just without the Home Screen step being quite as smooth.)
 
-1. **Cut:** pick a photo, roughly paint over (or loop around) what you want with ✨ Magic brush, which snaps to the real edges when you lift your finger, then tap Done.
-2. **Place:** pick the photo to paste onto, or paste onto the same one. Saved cutouts stay in a tray.
-3. **Adjust:** drag to move; drag the blue corner knob around to spin it about its center, or in and out to resize (pinch works too). Sliders for size, rotation, see-through (to check placement), and brightness to match the new photo. Flip, outline, shadow, nudge arrows, duplicate, send back, change background, save.
-4. **Text:** + Text with one-tap styles (Meme, Bold, Marker, Script, Handwritten, Neon, Label, Headline, Typewriter), color, outline, shadow, glow, box, all caps and alignment; captions shrink to fit the photo. Speech, thought, shout and caption bubbles with an aimable tail. **✎ Write** for handwriting or doodles; **🖌 Paint over** (big brush) and **▬ Cover box** (drag a solid box, square or rounded) to hide things before writing on top, with **💧 Pick color from photo** to match the paint to the background. Text uses the same blue knob to spin and resize. Tapping any text or cutout on the photo jumps to its step.
+## How it works
 
-## Photo on top (layers)
+The app opens in **Fun** mode, four steps along the bottom:
 
-In **Overlay**, tap **+ Photo on top** and pick a second photo. It covers your current photo as its own layer. The **Finger** switch sets what dragging does:
+1. **Cut.** Pick a photo and roughly paint over what you want, or draw a loop around it. When you lift your finger the edge snaps to the real outline. **− Remove** fixes spots it got wrong; pinch with two fingers to zoom in for fine edges.
+2. **Place.** Pick the photo to paste onto (or the same one). Your cutouts are kept in a tray for next time.
+3. **Adjust.** Drag the cutout to move it. Drag the blue corner knob around to spin it, in or out to resize. Sliders for see-through (to line it up) and brightness (to match the new photo), plus flip, outline and shadow. **+ Photo on top** lays a whole second photo over yours; switch the finger to **Erase** to rub away the parts you don't want.
+4. **Text.** Captions in one-tap styles (Meme, Bold, Marker, Script, Neon, and more), speech and thought bubbles, writing with your finger. **Paint over** and **Cover box** hide things first, and **Pick color from photo** matches the paint to the background.
 
-- **⌫ Erase** rubs parts of the top photo away so the photo underneath shows through, with brush size and softness controls. Pinch to zoom in for detail.
-- **↺ Restore** paints erased parts back.
-- **✥ Move** moves, spins and resizes the layer again; the erasing moves with it. Fill frame and Fit whole photo resize it in one tap.
+Then tap **Save picture**. On iPhone the share sheet opens, so choose **Save Image** to put it in Photos.
 
-Erasing never changes the original layer, so **Undo all erasing** gets the full photo back. The same Erase and Restore work on cutouts and stickers, and in Fun mode.
+Need more? **Editor** at the top has the full toolset: exposure and color, filters and looks, crop and straighten, heal and clone, drawing and shapes, frames, layers, and export as JPEG, PNG or WebP.
 
-## Cut out (main tool)
+Your work is saved as you go. If iPhone reloads the page while you're in another app, tap **Continue editing** to pick up where you left off.
 
-- **✨ Magic brush (default):** roughly paint over what you want, or just draw a loop around its outline. When you lift your finger it snaps the selection to the object's actual edges, using color models and contrast-aware smoothing (a light GrabCut) run on the device with no download. **+ Add** grows it; **− Remove** paints over wrong bits and re-snaps. The brush size sets how far it searches for the edge. **✨ Snap to edges** refines a selection made with any other tool.
-- **Tap select:** tap an object and it selects just that object, using the SlimSAM segmentation model (Segment Anything) run on-device via transformers.js. The model, about 15 MB, downloads from jsDelivr and Hugging Face on first use, then the browser caches it. **+ Add** and **− Remove** taps refine the selection. If the model can't load, Magic falls back to a color-based smart select with a Color range slider.
-- **Brush / Eraser:** shade over what you want with your finger; erase to clean up edges. Brush size stays constant on screen, so pinch-zooming gives a finer brush.
-- **Lasso:** trace around an area instead of painting it.
-- **Undo stroke, Invert, Clear**, and an edge-softness slider for feathered edges.
-- **With a selection:** paste as a movable layer, cut out & move (fills the hole), save to the cutouts tray, copy to clipboard, save as transparent PNG, erase from photo, or crop the photo to the shape.
-- **Cutouts tray:** saved cutouts stay in the browser, so they can be pasted onto other photos. Pasted pieces can be moved, pinched to resize and rotate, flipped, outlined, shadowed, and blended.
+## Privacy
 
-## Everything else
+Everything happens on your phone. Photos aren't uploaded anywhere, and there are no accounts or ads. The only things downloaded are the app itself, its fonts, and (only if you use **Tap select** in the editor) a small AI model.
 
-| Tool | What it does |
-|---|---|
-| Adjust | Exposure, contrast, highlights, shadows, whites, blacks, clarity, sharpen, blur, grain, vignette, fade, levels, auto tone |
-| Color | Temperature, tint, saturation, vibrance, 8-band HSL, color splash, split toning, duotone |
-| Effects | 15 looks plus invert, sepia, posterize, solarize, pixelate, sketch, emboss, mirror, kaleidoscope, tint, tilt-shift |
-| Crop | Free and fixed aspect crop, straighten, rotate, flip, resize |
-| Retouch | Heal, clone, blur, sharpen, dodge, burn, saturate, desaturate, red-eye |
-| Draw | Brush, marker, highlighter, eraser, arrows and shapes, pixelate/blur censor boxes |
-| Text | 10 fonts, outline, shadow, background box, alignment, opacity, blend modes; speech, thought, shout and caption balloons with a draggable tail |
-| Overlay | Image stickers, watermark, frames |
+---
 
-Also: layers panel, undo/redo that covers selection strokes too, hold-to-compare, export as JPEG, PNG or WebP at a chosen size. Work autosaves in the browser, so if the page reloads (common on iPhone after switching apps) a **Continue editing** card restores the photo, cutouts, text and adjustments. On wide screens and in landscape the tools move to a side panel.
+### Technical notes
 
-## Files
-
-- `index.html` — the whole app (sample photos are embedded)
-- `icon.png`, `apple-touch-icon.png` — home-screen icons
-
-Sample photos are from scikit-image's bundled data set (public domain / CC0).
+- `index.html` is the whole app: plain HTML, CSS and JavaScript, no build step. Sample photos are embedded.
+- `manifest.webmanifest` and `sw.js` make it installable and offline-capable. Bump `CACHE` in `sw.js` on each release so installed copies update.
+- `icon.png`, `apple-touch-icon.png` are the Home Screen icons; `preview.png` is the link-preview card.
+- Magic brush is an on-device GrabCut-style segmentation (color models plus contrast-aware smoothing). Tap select uses SlimSAM via transformers.js, loaded from jsDelivr and Hugging Face on first use, with a color-based fallback.
+- Sample photos are from scikit-image's bundled data set (public domain / CC0).
