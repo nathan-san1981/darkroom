@@ -67,6 +67,8 @@ canvas#view{display:block;max-width:100%;max-height:100%}
 .rtext{display:flex;flex-direction:column;gap:2px}.rtext span{color:var(--muted);font-weight:500}
 .samplesLbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:-6px}
 #openBtn{padding:11px 22px;font-size:15px;border-radius:11px}
+.seeRow .lbl{color:var(--fg);font-weight:800}
+.seeRow input[type=range]{height:30px}
 #samples{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;width:100%;max-width:560px}
 #samples button{padding:0;border-radius:10px;overflow:hidden;display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--line)}
 #samples img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
@@ -308,6 +310,7 @@ panel.addEventListener('change',()=>scheduleSave());
 
 // =============== load ===============
 function loadImage(src){
+  if(stashOnLoad&&orig&&!bgStash){ stashOnLoad=false; stashMain(); }
   if(pickAsLayer&&orig){ pickAsLayer=false; pickCb=null; $('#empty').hidden=true; addPhotoLayer(src); return; }
   const img=new Image(); img.onload=()=>{
     const max=3000, s=Math.min(1,max/Math.max(img.width,img.height)); const w=Math.round(img.width*s), h=Math.round(img.height*s);
@@ -319,10 +322,10 @@ function loadImage(src){
 $('#file').addEventListener('change',e=>{ const f=e.target.files[0]; if(!f) return; const r=new FileReader(); r.onload=()=>loadImage(r.result); r.readAsDataURL(f); e.target.value=''; });
 $('#openBtn').onclick=()=>$('#file').click();
 let pickCb=null;
-function openPicker(title,sub,cb){ pickAsLayer=false; pickCb=cb||null; $('#pickTitle').textContent=title||'Open a photo to start.'; $('#pickSub').textContent=sub||'Pick a sample below, choose one from your library, or copy a photo and paste it here.'; $('#empty').hidden=false; $('#cancelStart').hidden=!orig;
+function openPicker(title,sub,cb){ pickAsLayer=false; stashOnLoad=false; pickCb=cb||null; $('#pickTitle').textContent=title||'Open a photo to start.'; $('#pickSub').textContent=sub||'Pick a sample below, choose one from your library, or copy a photo and paste it here.'; $('#empty').hidden=false; $('#cancelStart').hidden=!orig;
   const pv=$('#pickPreview'); const t=cb&&tray.filter(Boolean)[0]; pv.hidden=!t; if(t) pv.src=t.thumb; }
 $('#openBtn2').onclick=()=>openPicker();
-$('#cancelStart').onclick=()=>{ $('#empty').hidden=true; pickCb=null; pickAsLayer=false; };
+$('#cancelStart').onclick=()=>{ $('#empty').hidden=true; pickCb=null; pickAsLayer=false; stashOnLoad=false; };
 SAMPLES.forEach(s=>{ const b=mk('button',{title:s.name}); b.append(mk('img',{src:s.thumb,alt:s.name}), mk('span',{textContent:s.name})); b.onclick=()=>loadImage(s.src); $('#samples').append(b); });
 // Paste: works from the page anywhere, and the paste zone gives iOS a target for its Paste menu
 function imageFromClipboard(e){ const items=[...(e.clipboardData?.items||[])]; const it=items.find(i=>i.type.startsWith('image/')); return it?it.getAsFile():(e.clipboardData?.files?.[0]||null); }
@@ -419,7 +422,8 @@ function render(){ if(!base) return; const dpr=view.width/(orig.width*fit); vctx
   if(layerBrush.cursor){ const p=layerBrush.cursor, u=1/(fit*vz.s); vctx.save(); vctx.beginPath(); vctx.arc(p.x,p.y,layerBrush.size/2*u,0,Math.PI*2); vctx.lineWidth=2.5*u; vctx.strokeStyle='rgba(0,0,0,.6)'; vctx.stroke(); vctx.lineWidth=1.2*u; vctx.strokeStyle='#fff'; vctx.stroke(); vctx.restore(); }
   if(tool==='retouch' && ret.mode==='clone' && ret.cloneSrc){ vctx.save(); vctx.strokeStyle='#58c4ff'; vctx.lineWidth=2/fit; vctx.beginPath(); vctx.arc(ret.cloneSrc.x,ret.cloneSrc.y,ret.size*imgScale()/2,0,Math.PI*2); vctx.stroke(); vctx.restore(); }
 }
-function drawScene(ctx, baseImg, showSel){
+let drawingView=false;
+function drawScene(ctx, baseImg, showSel){ drawingView=!!showSel;
   ctx.drawImage(baseImg,0,0,orig.width,orig.height);
   ctx.drawImage(doodle,0,0);
   for(const o of objects) drawObject(ctx,o,baseImg);
@@ -447,6 +451,7 @@ function drawObject(ctx,o,baseImg){
     ctx.restore(); return; }
   ctx.translate(o.x,o.y); ctx.rotate(o.rot); ctx.scale(o.scale,o.scale);
   if(o.type==='sticker'){ if(o.flip) ctx.scale(-1,1); if(FILTER_OK&&((o.bright&&o.bright!==1)||(o.sat&&o.sat!==1))) ctx.filter=`brightness(${o.bright||1}) saturate(${o.sat||1})`; if(o.shadow){ const m=Math.max(o.w,o.h); ctx.shadowColor='rgba(0,0,0,.55)'; ctx.shadowBlur=m*.05; ctx.shadowOffsetY=m*.025; }
+    if(drawingView&&o===sel&&o.erase&&tool==='overlay'&&layerBrush.mode!=='move'){ ctx.save(); ctx.globalAlpha*=.22; ctx.drawImage(o.img,-o.w/2,-o.h/2,o.w,o.h); ctx.restore(); }
     const src=stickerSrc(o); if(o.outline){ const im=outlined(o), pw=o.w*im.width/src.width, ph=o.h*im.height/src.height; ctx.drawImage(im,-pw/2,-ph/2,pw,ph); } else ctx.drawImage(src,-o.w/2,-o.h/2,o.w,o.h); }
   else if(o.type==='shape'){ ctx.strokeStyle=o.color; ctx.fillStyle=o.color; ctx.lineWidth=o.width; ctx.lineCap='round'; ctx.lineJoin='round'; const hw=o.w/2, hh=o.h/2;
     if(o.kind==='rect'){ if(o.round){ const rr=Math.min(Math.abs(o.w),Math.abs(o.h))*.18; ctx.beginPath(); ctx.roundRect(Math.min(-hw,hw),Math.min(-hh,hh),Math.abs(o.w),Math.abs(o.h),rr); o.fill?ctx.fill():ctx.stroke(); } else if(o.fill) ctx.fillRect(-hw,-hh,o.w,o.h); else ctx.strokeRect(-hw,-hh,o.w,o.h); }
@@ -738,15 +743,17 @@ function openLayerPicker(){ openPicker('Pick the photo to put on top','It goes o
 function addPhotoLayer(src){ const im=new Image(); im.onload=()=>{ const m=Math.min(1,2400/Math.max(im.width,im.height)); const c=cvs(im.width*m,im.height*m); c.getContext('2d').drawImage(im,0,0,c.width,c.height);
     const s=Math.max(orig.width/c.width,orig.height/c.height); layerBrush.mode='move';
     if(fun.on){ fun.step='adjust'; renderFunbar(); }
-    addObject({type:'sticker',photo:true,img:c,w:c.width*s,h:c.height*s,x:orig.width/2,y:orig.height/2,rot:0,scale:1,opacity:1,blend:'source-over',flip:false,outline:null,shadow:false});
-    setTool('overlay',true); updateObjbar(); showPanel(); setHint('Tap Erase, then rub out the parts of the top photo you don\'t want'); setTimeout(()=>{ if(layerBrush.mode==='move') setHint(''); },4000); }; im.src=src; }
+    addObject({type:'sticker',photo:true,img:c,w:c.width*s,h:c.height*s,x:orig.width/2,y:orig.height/2,rot:0,scale:1,opacity:fun.on?.5:1,blend:'source-over',flip:false,outline:null,shadow:false});
+    setTool('overlay',true); updateObjbar(); showPanel(); setHint(fun.on?'Both photos show through. Use See-through to change it, and Erase to rub away what you don\'t want':'Tap Erase, then rub out the parts of the top photo you don\'t want'); setTimeout(()=>{ if(layerBrush.mode==='move') setHint(''); },4000); }; im.src=src; }
 function layerControls(P,o){
-  const r=mk('div',{className:'row'}); r.append(mk('span',{className:'lbl',textContent:'Finger'}));
-  [['move','✥ Move'],['erase','⌫ Erase'],['restore','↺ Restore']].forEach(([m,l])=>r.append(chip(l,layerBrush.mode===m,()=>{ layerBrush.mode=m; layerBrush.cursor=null; setHint(m==='erase'?'Rub out parts of this layer. Pinch to zoom in for detail.':m==='restore'?'Paint to bring erased parts back':''); render(); showPanel(); })));
+  const r=mk('div',{className:'row'}); r.style.flexWrap='wrap'; r.append(mk('span',{className:'lbl',textContent:'Finger'}));
+  [['move','✥ Move'],['erase','⌫ Erase'],['restore','↺ Restore']].forEach(([m,l])=>r.append(chip(l,layerBrush.mode===m,()=>{ layerBrush.mode=m; layerBrush.cursor=null; setHint(m==='erase'?'Rub away the top photo to show the one underneath. Pinch to zoom in for detail.':m==='restore'?'Paint to bring back parts of the top photo you erased':''); render(); showPanel(); })));
+  r.append(chip('Keep only…',false,()=>{ snapshot('objects'); o.erase=newErase(o); const g=o.erase.getContext('2d'); g.fillStyle='#000'; g.fillRect(0,0,o.erase.width,o.erase.height); o._ver=(o._ver||0)+1; layerBrush.mode='restore'; setHint('Paint over the part you want to keep'); render(); showPanel(); }));
+  r.append(chip('⇄ Reverse',false,()=>{ snapshot('objects'); const old=o.erase; const e=newErase(o), g=e.getContext('2d'); g.fillStyle='#000'; g.fillRect(0,0,e.width,e.height); if(old){ g.globalCompositeOperation='destination-out'; g.drawImage(old,0,0,e.width,e.height); } o.erase=e; o._ver=(o._ver||0)+1; render(); toast('Erasing reversed'); }));
   if(o.erase) r.append(chip('Undo all erasing',false,()=>{ snapshot('objects'); o.erase=null; o._ver=(o._ver||0)+1; render(); showPanel(); }));
   P.append(r);
   if(layerBrush.mode!=='move'){ P.append(slider('Brush size',6,200,layerBrush.size,v=>layerBrush.size=v), slider('Softness',0,100,layerBrush.soft,v=>layerBrush.soft=v,1,v=>v+'%')); }
-  else if(o.photo){ const r2=mk('div',{className:'row'}); r2.append(mk('span',{className:'lbl',textContent:'Size'}), chip('Fill frame',false,()=>{ snapshot('objects'); o.scale=Math.max(orig.width/o.w,orig.height/o.h); o.rot=0; o.x=orig.width/2; o.y=orig.height/2; render(); syncFunSliders(); showPanel(); }), chip('Fit whole photo',false,()=>{ snapshot('objects'); o.scale=Math.min(orig.width/o.w,orig.height/o.h); o.rot=0; o.x=orig.width/2; o.y=orig.height/2; render(); syncFunSliders(); showPanel(); })); P.append(r2); }
+  else if(o.photo){ const r2=mk('div',{className:'row'}); r2.append(mk('span',{className:'lbl',textContent:'Fit'}), chip('Fill frame',false,()=>{ snapshot('objects'); o.scale=Math.max(orig.width/o.w,orig.height/o.h); o.rot=0; o.x=orig.width/2; o.y=orig.height/2; render(); syncFunSliders(); showPanel(); }), chip('Fit whole photo',false,()=>{ snapshot('objects'); o.scale=Math.min(orig.width/o.w,orig.height/o.h); o.rot=0; o.x=orig.width/2; o.y=orig.height/2; render(); syncFunSliders(); showPanel(); })); P.append(r2); }
 }
 
 // =============== pointer handling ===============
@@ -772,7 +779,7 @@ view.addEventListener('pointerdown',e=>{
   if(sel&&sel.type==='balloon'&&sel.style!=='caption'){ const t=tailTip(sel); if(Math.hypot(t.x-p.x,t.y-p.y)<18/fit){ snapshot('objects'); gesture={kind:'tail'}; return; } }
   if(sel&&(sel.type==='censor'||sel.type==='shape')){ const hp=handlePos(sel); if(Math.hypot(hp.x-p.x,hp.y-p.y)<18/fit){ snapshot('objects'); gesture={kind:'resize',p0:p,w0:sel.w,h0:sel.h,x0:sel.x,y0:sel.y}; return; } }
   const h=hit(p.x,p.y); if(h!==sel){ sel=h; updateObjbar(); render(); showPanel(); }
-  if(h&&fun.on){ snapshot('objects'); gesture={kind:'drag',ox:h.x-p.x,oy:h.y-p.y}; const want=(h.type==='text'||h.type==='balloon'||h.type==='shape'||h.type==='censor')?'text':'adjust'; if(fun.step!==want){ fun.step=want; if(want==='text'){ funWrite=false; setTool('text',true); } else setTool('overlay',true); renderFunbar(); showPanel(); } return; }
+  if(h&&fun.on&&!bgStash){ snapshot('objects'); gesture={kind:'drag',ox:h.x-p.x,oy:h.y-p.y}; const want=(h.type==='text'||h.type==='balloon'||h.type==='shape'||h.type==='censor')?'text':'adjust'; if(fun.step!==want){ fun.step=want; if(want==='text'){ funWrite=false; setTool('text',true); } else setTool('overlay',true); renderFunbar(); showPanel(); } return; }
   if(h){ snapshot('objects'); gesture={kind:'drag',ox:h.x-p.x,oy:h.y-p.y}; if(h.type==='text'&&tool!=='text') setTool('text',true); if(h.type==='balloon'&&tool!=='text') setTool('text',true); if(h.type==='sticker'&&tool!=='overlay') setTool('overlay',true); if((h.type==='shape'||h.type==='censor')&&tool!=='draw'){ draw.mode=h.type==='shape'?'shape':'censor'; setTool('draw',true); } }
 });
 view.addEventListener('pointermove',e=>{
@@ -868,17 +875,28 @@ function cutModeOptions(P){
   if(cut.mode!=='lasso') P.append(slider('Brush size',4,140,cut.size,v=>cut.size=v)); }
 // =============== fun mode ===============
 const fun={on:false,step:'cut'};
-const FUN_STEPS=[['cut','Cut'],['place','Place'],['adjust','Adjust'],['text','Text']];
-let funWrite=false;
-function funStep(st){ fun.step=st; funWrite=false; pickingColor=false; if(st==='cut'){ setTool('cut'); setHint(cut.has?'':modeHint()); } else if(st==='text'){ sel=sel&&(sel.type==='text'||sel.type==='balloon')?sel:null; setTool('text',true); } else { sel=sel&&sel.type==='sticker'?sel:null; setTool('overlay',true); } updateObjbar(); renderFunbar(); showPanel(); }
+const FUN_STEPS=[['photo','Photo'],['add','Add'],['adjust','Adjust'],['text','Text']];
+let funWrite=false, cutHere=false, bgStash=null, stashOnLoad=false;
+function funStep(st){ fun.step=st; funWrite=false; pickingColor=false;
+  if(st==='add'&&(bgStash||cutHere)){ setTool('cut'); setHint(cut.has?'':modeHint()); }
+  else if(st==='text'){ sel=sel&&(sel.type==='text'||sel.type==='balloon')?sel:null; setTool('text',true); }
+  else { if(st!=='adjust') sel=null; else sel=sel&&sel.type==='sticker'?sel:(objects.filter(o=>o.type==='sticker').slice(-1)[0]||null); setTool('overlay',true); }
+  updateObjbar(); renderFunbar(); showPanel(); }
 function renderFunbar(){ const bar=$('#funbar'); bar.replaceChildren(); const idx=FUN_STEPS.findIndex(x=>x[0]===fun.step);
-  FUN_STEPS.forEach(([k,l],i)=>{ const b=mk('button',{className:'step'+(k===fun.step?' on':i<idx?' done':'')}); b.append(mk('b',{textContent:i<idx?'✓':String(i+1)}),l); b.onclick=()=>{ if(k==='adjust'&&!objects.some(o=>o.type==='sticker')){ toast('Place a cutout first'); return; } funStep(k); }; bar.append(b); });
-}
-function toggleFun(){ fun.on=!fun.on; document.body.classList.toggle('fun',fun.on); $('#modeBtn').textContent=fun.on?'More tools':'← Fun'; $('#saveBtn').textContent=fun.on?'Save':'Export'; $('#funBtn').classList.toggle('on',fun.on); $('#edBtn').classList.toggle('on',!fun.on); try{ localStorage.setItem('darkroom-mode2',fun.on?'fun':'editor'); }catch(_){} updateObjbar();
-  if(fun.on){ if(!orig){ openPicker('Pick the photo to cut from','Choose one of your photos. Next you\'ll paint over the part you want.',()=>funStep('cut')); renderFunbar(); } else funStep(objects.some(o=>o.type==='sticker')?'adjust':'cut'); }
-  else { setTool(orig?'cut':'cut'); } }
+  FUN_STEPS.forEach(([k,l],i)=>{ const b=mk('button',{className:'step'+(k===fun.step?' on':i<idx?' done':'')}); b.append(mk('b',{textContent:i<idx?'✓':String(i+1)}),l);
+    b.onclick=()=>{ if(bgStash&&k!=='add'){ toast('Finish or cancel the cut first'); return; } if(k==='adjust'&&!objects.some(o=>o.type==='sticker')){ toast('Add a photo or cutout first'); return; } cutHere=false; funStep(k); }; bar.append(b); }); }
+function pickMain(){ openPicker('Pick your main photo','This is the picture you\'ll add photos, cutouts and text to.',()=>{ cutHere=false; funStep('add'); }); $('#pickPreview').hidden=true; }
+function toggleFun(){ fun.on=!fun.on; document.body.classList.toggle('fun',fun.on); $('#modeBtn').textContent=fun.on?'More tools':'← Fun'; $('#saveBtn').textContent=fun.on?'Save':'Export'; $('#funBtn').classList.toggle('on',fun.on); $('#edBtn').classList.toggle('on',!fun.on); updateObjbar();
+  if(fun.on){ if(!orig){ fun.step='photo'; pickMain(); renderFunbar(); } else funStep(objects.some(o=>o.type==='sticker')?'adjust':'add'); }
+  else { if(bgStash) restoreBg(); cutHere=false; setTool('cut'); } }
 $('#modeBtn').onclick=toggleFun;
-function funPickTarget(){ openPicker('Pick the photo to paste onto','The cutout will be placed in the middle, ready to move.',()=>{ funStep('adjust'); funPlace(tray.filter(Boolean)[0]); }); }
+// cutting from another photo keeps the main photo safe in memory, then brings it back
+function startCutFrom(){ openPicker('Pick a photo to cut from','Paint over the part you want. It goes onto your main photo.',()=>{ cutHere=false; funStep('add'); }); $('#pickPreview').hidden=true; stashOnLoad=true; }
+function stashMain(){ bgStash={orig,doodle,objects,adj,history,redo}; }
+function restoreBg(){ const st=bgStash; if(!st) return; bgStash=null; orig=st.orig; doodle=st.doodle; objects=st.objects; adj=st.adj; history=st.history; redo=st.redo; sel=null; syncUndo(); resetSel(); refreshPreview(); resetVZ(); layout(); scheduleSave(); }
+async function finishCut(){ if(!cut.has) return; await busy('Cutting…'); const pc=cutPiece(); if(!pc){ toast('Nothing selected'); return; } addToTray(pc.canvas);
+  if(bgStash){ restoreBg(); placeCutout(pc.canvas); } else { placeCutout(pc.canvas,pc.b.x+pc.b.w/2,pc.b.y+pc.b.h/2); clearSel(); }
+  cutHere=false; fun.step='adjust'; layerBrush.mode='move'; renderFunbar(); setTool('overlay',true); showPanel(); }
 function funPlace(t){ if(!t) return; placeCutout(t.c); fun.step='adjust'; renderFunbar(); showPanel(); }
 
 const TEXT_STYLES=[
@@ -963,43 +981,50 @@ function funDrawPanel(P){
 }
 let funSliderSync=null; function syncFunSliders(){ if(funSliderSync) funSliderSync(); }
 function funPanel(P){
-  if(fun.step==='cut'){
-    const r0=mk('div',{className:'row'}); CUT_MODES.filter(([m])=>m!=='magic').forEach(([m,l])=>r0.append(chip(l,cut.mode===m,()=>{ cut.mode=m; if(m==='magic'&&magic.state==='idle') loadAI(); if(!cut.has) setHint(modeHint()); showPanel(); })));
-    if(cut.has) r0.append(chip('Clear',false,()=>{ pushSelUndo(); clearSel(); })); r0.append(chip('Invert',false,invertSel)); P.append(r0);
-    cutModeOptions(P); if(cut.has&&cut.mode!=='magicbrush') P.append(mk('div',{className:'row'},chip('✨ Snap to edges',false,()=>runSnap(true)))); P.append(slider('Edge softness',0,20,cut.feather,v=>cut.feather=v));
-    const go=mk('button',{className:'primary bigbtn',textContent:cut.has?'Done. Cut it out →':(cut.mode==='magic'?'Tap what you want, then tap here':cut.mode==='magicbrush'?'Roughly paint over it, then tap here':'Paint over what you want, then tap here')}); go.disabled=!cut.has; go.onclick=async()=>{ await cutAction('copy'); funStep('place'); }; P.append(mk('div',{className:'row'},go));
-    const r=mk('div',{className:'row'}); r.append(chip('Change photo',false,()=>openPicker('Pick the photo to cut from','',()=>funStep('cut'))), mk('span',{className:'note',textContent:'Pinch with two fingers to zoom in for fine edges.'})); P.append(r);
-    const items=tray.filter(Boolean); if(items.length){ const r2=mk('div',{className:'row'}); r2.append(mk('span',{className:'lbl',textContent:'Saved'}), chip('Skip: use a saved cutout →',false,()=>funStep('place'))); P.append(r2); }
+  if(fun.step==='photo'){
+    P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'This is your main photo. Next, add another photo on top or cut something out to put on it.'})));
+    const go=mk('button',{className:'primary bigbtn',textContent:'Next: add to it →'}); go.onclick=()=>funStep('add'); P.append(mk('div',{className:'row'},go));
+    P.append(mk('div',{className:'row'},chip('Choose a different main photo',false,pickMain)));
   }
-  if(fun.step==='place'){
-    const items=tray.filter(Boolean);
-    const go=mk('button',{className:'primary bigbtn',textContent:'Pick a photo to paste onto'}); go.onclick=funPickTarget; P.append(mk('div',{className:'row'},go));
-    const same=mk('button',{className:'bigbtn',textContent:'Paste onto this same photo'}); same.onclick=()=>funPlace(items[0]); P.append(mk('div',{className:'row'},same));
-    const r=mk('div',{className:'row tray'+(trayEdit?' editing':'')}); r.append(mk('span',{className:'lbl',textContent:'Cutouts'}));
-    items.forEach((t,i)=>{ const b=mk('button',{className:'trayItem'+(i===0?' on':'')}); if(i===0) b.style.borderColor='var(--sel)'; b.append(mk('img',{src:t.thumb,alt:'Cutout'})); b.onclick=()=>{ if(trayEdit){ tray.splice(tray.indexOf(t),1); saveTray(); showPanel(); return; } tray.splice(tray.indexOf(t),1); tray.unshift(t); saveTray(); showPanel(); }; r.append(b); });
-    if(items.length) r.append(chip(trayEdit?'Done':'Remove…',trayEdit,()=>{ trayEdit=!trayEdit; showPanel(); })); r.append(pasteTarget('Paste image')); P.append(r);
-    P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'The highlighted cutout is the one that gets pasted. Tap another to choose it. Paste image accepts a picture copied from any app.'})));
+  if(fun.step==='add'&&(bgStash||cutHere)){
+    P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:bgStash?'Cutting from another photo. Paint over the part you want; it goes onto your main photo.':'Paint over the part of your photo you want to copy.'})));
+    const r0=mk('div',{className:'row'}); CUT_MODES.filter(([m])=>m!=='magic').forEach(([m,l])=>r0.append(chip(l,cut.mode===m,()=>{ cut.mode=m; if(!cut.has) setHint(modeHint()); showPanel(); })));
+    if(cut.has) r0.append(chip('Clear',false,()=>{ pushSelUndo(); clearSel(); })); P.append(r0);
+    cutModeOptions(P);
+    const go=mk('button',{className:'primary bigbtn',textContent:cut.has?(bgStash?'Done. Put it on my photo →':'Done. Copy it →'):'Paint over what you want, then tap here'}); go.disabled=!cut.has; go.onclick=finishCut; P.append(mk('div',{className:'row'},go));
+    P.append(mk('div',{className:'row'},chip('Cancel',false,()=>{ if(bgStash) restoreBg(); else clearSel(); cutHere=false; funStep('add'); }), mk('span',{className:'note',textContent:'Pinch with two fingers to zoom in for fine edges.'})));
+  }
+  else if(fun.step==='add'){
+    const a1=mk('button',{className:'primary bigbtn',textContent:'＋ Put another photo on top'}); a1.onclick=openLayerPicker; P.append(mk('div',{className:'row'},a1));
+    P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:'It starts half see-through so you can see both photos. Then erase the parts you don\'t want.'})));
+    const r=mk('div',{className:'row'}); r.append(chip('✂ Cut something from another photo',false,startCutFrom), chip('✂ Copy part of this photo',false,()=>{ cutHere=true; funStep('add'); })); P.append(r);
+    const items=tray.filter(Boolean); if(items.length){ const rt=mk('div',{className:'row tray'+(trayEdit?' editing':'')}); rt.append(mk('span',{className:'lbl',textContent:'Saved'}));
+      items.forEach(t=>{ const bt=mk('button',{className:'trayItem',title:trayEdit?'Remove':'Add to photo'}); bt.append(mk('img',{src:t.thumb,alt:'Cutout'})); bt.onclick=()=>{ if(trayEdit){ tray.splice(tray.indexOf(t),1); saveTray(); showPanel(); return; } funPlace(t); }; rt.append(bt); });
+      rt.append(chip(trayEdit?'Done':'Remove…',trayEdit,()=>{ trayEdit=!trayEdit; showPanel(); })); P.append(rt); }
+    P.append(mk('div',{className:'row'},pasteTarget('Paste a copied image')));
   }
   if(fun.step==='text'){ funTextPanel(P); const sv=mk('button',{className:'primary bigbtn',textContent:'Save picture'}); sv.onclick=doExport; P.append(mk('div',{className:'row'},sv)); }
   if(fun.step==='adjust'){
     const o=sel&&sel.type==='sticker'?sel:null;
-    if(o) layerControls(P,o);
+    if(o){ const see=slider('See-through',0,95,Math.round((1-(o.opacity??1))*100),v=>{ o.opacity=1-v/100; render(); },1,v=>v+'%'); see.classList.add('seeRow'); P.append(see);
+      const rq=mk('div',{className:'row'}); rq.append(chip('Solid',(o.opacity??1)>=.99,()=>{ o.opacity=1; render(); showPanel(); }), chip('Half',Math.abs((o.opacity??1)-.5)<.02,()=>{ o.opacity=.5; render(); showPanel(); }), chip('Faint',Math.abs((o.opacity??1)-.25)<.02,()=>{ o.opacity=.25; render(); showPanel(); })); P.append(rq);
+      layerControls(P,o); }
     if(o){
       const g=mk('div',{className:'grid2'});
       const sz=slider('Size',5,400,Math.round((o.scale||1)*100),v=>{ o.scale=v/100; render(); },1,v=>v+'%');
       const rt=slider('Rotate',-180,180,Math.round(((o.rot||0)*180/Math.PI+540)%360-180),v=>{ o.rot=v*Math.PI/180; render(); },1,v=>v+'°');
-      const tr=slider('See-through',0,100,Math.round((1-(o.opacity??1))*100),v=>{ o.opacity=1-v/100; render(); },1,v=>v+'%');
+      const tr=null;
       const br=slider('Brightness',50,150,Math.round((o.bright||1)*100),v=>{ o.bright=v/100; render(); },1,v=>v+'%');
-      P.append(sz,rt,tr,br); void g;
+      P.append(sz,rt,br); void g; void tr;
       funSliderSync=()=>{ const set=(row,val)=>{ const i=row.querySelector('input'); i.value=val; row.querySelector('.val').textContent=i.value+(row===sz||row===tr||row===br?(row===rt?'°':'%'):'%'); }; set(sz,Math.round((o.scale||1)*100)); set(rt,Math.round(((o.rot||0)*180/Math.PI+540)%360-180)); };
       const r1=mk('div',{className:'row'}); r1.append(chip('↺ 15°',false,()=>{ o.rot=(o.rot||0)-Math.PI/12; render(); syncFunSliders(); }), chip('↻ 15°',false,()=>{ o.rot=(o.rot||0)+Math.PI/12; render(); syncFunSliders(); }), chip('Straight',false,()=>{ o.rot=0; render(); syncFunSliders(); }), chip('Flip',!!o.flip,()=>{ snapshot('objects'); o.flip=!o.flip; render(); showPanel(); }), chip('Outline',!!o.outline,()=>{ snapshot('objects'); o.outline=o.outline?null:'#ffffff'; render(); showPanel(); }), chip('Shadow',!!o.shadow,()=>{ snapshot('objects'); o.shadow=!o.shadow; render(); showPanel(); })); P.append(r1);
       if(o.outline){ const so=swatches(o.outline,c=>{ snapshot('objects'); o.outline=c; render(); }); so.prepend(mk('span',{className:'lbl',textContent:'Outline'})); P.append(so); }
       const r2=mk('div',{className:'row'}); r2.style.flexWrap='wrap'; const nd=mk('div',{className:'nudge'}); const step=()=>Math.max(1,2/(fit*vz.s));
       [['',0,0],['↑',0,-1],['',0,0],['←',-1,0],['·',0,0],['→',1,0],['',0,0],['↓',0,1],['',0,0]].forEach(([l,dx,dy])=>{ const b=mk('button',{textContent:l}); if(!l){ b.style.visibility='hidden'; } else if(l==='·'){ b.title='Center'; b.onclick=()=>{ o.x=orig.width/2; o.y=orig.height/2; render(); }; } else { b.onclick=()=>{ o.x+=dx*step(); o.y+=dy*step(); render(); }; } nd.append(b); });
       r2.append(mk('span',{className:'lbl',textContent:'Nudge'}),nd, chip('Duplicate',false,()=>$('#dupObj').click()), chip('Send back',false,()=>{ snapshot('objects'); objects=objects.filter(x=>x!==o); objects.unshift(o); render(); }), chip('Delete',false,()=>$('#delObj').click())); P.append(r2);
-      P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:layerBrush.mode==='move'?'Drag to move it. Drag the blue corner knob around to spin it, in or out to resize. Tap Erase to rub parts of it away.':'Rub with your finger. Switch back to Move to reposition it, your erasing moves with it.'})));
-    } else P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:objects.some(x=>x.type==='sticker')?'Tap a cutout on the photo to adjust it.':'No cutout on this photo yet.'})));
-    const r3=mk('div',{className:'row'}); r3.append(chip('Aa Add text →',false,()=>funStep('text')), chip('+ Photo on top',false,openLayerPicker), chip('+ Cut another',true,()=>openPicker('Pick the photo to cut from','',()=>funStep('cut'))), chip('+ Paste a saved cutout',false,()=>funStep('place')), chip('Change background',false,()=>openPicker('Pick a new background photo','Your cutouts stay saved and will be pasted onto it.',()=>{ funStep('adjust'); funPlace(tray.filter(Boolean)[0]); }))); P.append(r3);
+      P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:layerBrush.mode==='move'?'Drag to move it. Drag the blue corner knob around to spin it, in or out to resize. Tap Erase to rub away parts you don\'t want.':'Rub with your finger. Erased parts show faintly so you can see them; they disappear when you switch back to Move or save.'})));
+    } else P.append(mk('div',{className:'row'},mk('span',{className:'note',textContent:objects.some(x=>x.type==='sticker')?'Tap a photo or cutout on your picture to adjust it.':'Nothing added yet.'})));
+    const r3=mk('div',{className:'row'}); r3.append(chip('Aa Add text →',true,()=>funStep('text')), chip('＋ Add more',false,()=>funStep('add'))); P.append(r3);
     const sv=mk('button',{className:'primary bigbtn',textContent:'Save picture'}); sv.onclick=doExport; P.append(mk('div',{className:'row'},sv));
   }
 }
@@ -1014,7 +1039,7 @@ let saveTimer=null, saving=false, origBlob=null, origBlobVer=-1; const imgBlobs=
 const toBlob=(c,type,q)=>new Promise(r=>c.toBlob(r,type,q));
 function scheduleSave(){ if(!orig) return; clearTimeout(saveTimer); saveTimer=setTimeout(saveSession,1500); }
 async function imgToBlob(im){ if(imgBlobs.has(im)) return imgBlobs.get(im); const c=cvs(im.naturalWidth||im.width,im.naturalHeight||im.height); c.getContext('2d').drawImage(im,0,0); const b=await toBlob(c,'image/png'); imgBlobs.set(im,b); return b; }
-async function saveSession(){ if(!orig||saving) return; saving=true; try{
+async function saveSession(){ if(!orig||saving||bgStash) return; saving=true; try{
     if(origBlobVer!==photoVer||!origBlob){ origBlob=await toBlob(orig,'image/jpeg',.95); origBlobVer=photoVer; }
     const objs=[]; for(const o of objects){ const c={...o}; delete c._op; if(o.type==='sticker'){ c.img=null; c.imgBlob=await imgToBlob(o.img); c.erase=null; if(o.erase) c.eraseBlob=await toBlob(o.erase,'image/png'); } objs.push(c); }
     const t=cvs(Math.min(160,orig.width*160/Math.max(orig.width,orig.height)),Math.min(160,orig.height*160/Math.max(orig.width,orig.height))); const tg=t.getContext('2d'); tg.drawImage(orig,0,0,t.width,t.height); tg.drawImage(doodle,0,0,t.width,t.height); for(const o of objects){ tg.save(); tg.scale(t.width/orig.width,t.height/orig.height); try{ drawObject(tg,o,base); }catch(_){ } tg.restore(); }
@@ -1044,7 +1069,7 @@ const canInstall=()=>IS_IOS&&!STANDALONE&&TOP_LEVEL;
 function installHTML(){ return SHARE_SVG+'<div>Add it to your Home Screen: tap <b>Share</b> at the bottom of Safari, then <b>Add to Home Screen</b>. It opens full-screen like an app and works offline.</div>'; }
 function showWelcome(){ const w=$('#welcome'); w.replaceChildren(); const c=mk('div',{className:'card'});
   c.append(mk('h2',{textContent:'Welcome to Darkroom'}));
-  const ol=mk('ol'); [['Cut','Pick a photo and roughly paint over what you want. The edge snaps into place when you lift your finger.'],['Place','Pick another photo to paste it onto. Drag to move; drag the blue corner knob to spin and resize.'],['Text','Add captions, speech bubbles or your own writing, then tap Save picture.']].forEach(([t,d])=>{ const li=mk('li'); const dv=mk('div'); dv.append(mk('b',{textContent:t+'. '}),d); li.append(dv); ol.append(li); }); c.append(ol);
+  const ol=mk('ol'); [['Photo','Pick your main photo.'],['Add','Put another photo on top. It starts see-through so you see both; erase the parts you don\'t want. Or cut something out of another photo.'],['Adjust','Drag to move. The blue corner knob spins and resizes. The See-through slider changes how much shows through.'],['Text','Add comic bubbles, captions or your own writing, then tap Save.']].forEach(([t,d])=>{ const li=mk('li'); const dv=mk('div'); dv.append(mk('b',{textContent:t+'. '}),d); li.append(dv); ol.append(li); }); c.append(ol);
   if(canInstall()){ const ins=mk('div',{className:'install'}); ins.innerHTML=installHTML(); c.append(ins); }
   c.append(mk('div',{className:'note',textContent:'Your photos stay on your phone. Nothing is uploaded.'}));
   const go=mk('button',{className:'primary bigbtn',textContent:'Get started'}); go.onclick=()=>{ w.hidden=true; try{ localStorage.setItem('darkroom-welcomed','1'); }catch(_){} }; c.append(go);

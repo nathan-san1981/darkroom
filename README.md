@@ -13,12 +13,12 @@ Darkroom then opens from its own icon, full-screen like any other app. (It also 
 
 ## How it works
 
-Darkroom is built around one thing: cutting something out of one photo and putting it on another. Four steps run along the bottom:
+Darkroom is built around one thing: putting part of one photo onto another. Four steps run along the bottom:
 
-1. **Cut.** Pick a photo and roughly paint over what you want, or draw a loop around it. When you lift your finger the edge snaps to the real outline. **− Remove** fixes spots it got wrong; pinch with two fingers to zoom in for fine edges.
-2. **Place.** Pick the photo to paste onto (or the same one). Your cutouts are kept in a tray for next time.
-3. **Adjust.** Drag the cutout to move it. Drag the blue corner knob around to spin it, in or out to resize. Sliders for see-through (to line it up) and brightness (to match the new photo), plus flip, outline and shadow. **+ Photo on top** lays a whole second photo over yours; switch the finger to **Erase** to rub away the parts you don't want.
-4. **Text.** Comic bubbles in one tap: speech, puffy thought clouds, spiky shout, dashed whisper, yellow caption boxes and a POW! sound effect, in real comic lettering. Drag the blue dot to aim a bubble's tail. Plus captions in one-tap styles (Meme, Bold, Marker, Script, Neon, and more) and writing with your finger. **Paint over** and **Cover box** hide things first, and **Pick color from photo** matches the paint to the background.
+1. **Photo.** Pick your main photo.
+2. **Add.** **Put another photo on top.** It starts half see-through, so you can see both photos at once. Or **cut something from another photo**: paint over the part you want and it drops onto your main photo. Saved cutouts and pasted images can be added from here too.
+3. **Adjust.** The **See-through** slider (plus Solid / Half / Faint) sets how much of the top photo shows. Switch your finger to **Erase** to rub away parts of the top photo and show the one underneath; erased parts show faintly while you work. **Restore** paints them back, **⇄ Reverse** flips what's erased and what's kept, and **Keep only…** hides everything so you paint in just the part you want. In **Move**, drag to position it and use the blue corner knob to spin and resize.
+4. **Text.** Comic bubbles in one tap: speech, puffy thought clouds, spiky shout, dashed whisper, yellow caption boxes and a POW! sound effect, in real comic lettering. Plus captions in one-tap styles, writing with your finger, and Paint over / Cover box to hide things first.
 
 Then tap **Save picture**. On iPhone the share sheet opens, so choose **Save Image** to put it in Photos.
 
